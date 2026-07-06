@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ja2-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["play/server.py"],
+      "port": 8796,
+      "autoPort": true
+    }
+  ]
+}

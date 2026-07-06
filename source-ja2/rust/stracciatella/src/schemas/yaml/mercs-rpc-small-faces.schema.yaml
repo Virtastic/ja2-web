@@ -1,0 +1,21 @@
+$schema: http://json-schema.org/draft-04/schema#
+type: array
+title: Mercs RPC Small Faces
+items:
+  title: Mercs RPC Small Face
+  description: |
+    Defines the offsets of RPC small face image. Small faces are typically used for RPCs' and EPCs' outside of a tactical conversation.
+  type: object
+  properties:
+    profile:
+      title: Profile
+      description: The profile for which to define the small face
+      $ref: types/id.schema.yaml
+    eyesXY:
+      $ref: types/face-offset.schema.yaml
+    mouthXY:
+      $ref: types/face-offset.schema.yaml
+  required:
+  - profile
+  - eyesXY
+  - mouthXY

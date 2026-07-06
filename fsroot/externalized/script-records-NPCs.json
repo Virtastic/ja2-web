@@ -1,0 +1,2156 @@
+[
+    {
+        "profile": "MARIA",
+        "records": [
+            {
+                "index": 0,
+                "quest": {
+                    "name": "DELIVER_LETTER",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 18, // "I cannot wait to see my brother."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "EPC_WHO_IS_RECRUITED",
+                "quoteNum": 16, // "Why? Why?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 2,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "EPC_WHO_IS_RECRUITED",
+                "quoteNum": 16, // "Why? Why?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 3,
+                "factMustBeTrue": 121, // unnamed fact
+                "quoteNum": 17, // "We have to be going. We have already spent far too much time in San Mona."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 4,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 8, // "Help me. I need... to get to a hospital."
+                "numQuotes": 1
+            },
+            {
+                "index": 5,
+                "requiredItem": "MONEY",
+                "requiredApproach": "GIVINGITEM",
+                "quoteNum": 10, // "No, Madame Layla is the only one permitted to handle money."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 1 // NPC_ACTION_DONT_ACCEPT_ITEM
+                }
+            },
+            {
+                "index": 6,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quest": {
+                    "name": "RESCUE_MARIA",
+                    "status": "INPROGRESS"
+                },
+                "quoteNum": 11, // "Angel sent you? We must be careful. If Madame Layla knows why you are here, Mr. Klaus' men will descend upon this place quickly. He is the real owner, and he thinks nothing of human life."
+                "numQuotes": 3,
+                "triggerNPC": "MARIA",
+                "triggerRecord": 18,
+                "actionData": {
+                    "code": 39 // NPC_ACTION_PLAYER_SAYS_NICE_LATER
+                }
+            },
+            {
+                "index": 7,
+                "eraseOnceSaid": true,
+                "quest": {
+                    "name": "RESCUE_MARIA",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "TRIGGER_NPC",
+                "actionData": {
+                    "code": 145 // NPC_ACTION_TRIGGER_MARIA
+                }
+            },
+            {
+                "index": 8,
+                "eraseOnceSaid": true,
+                "quest": {
+                    "name": "RESCUE_MARIA",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 14, // "It is hard to believe I am here with you, Angel. You mustn't worry... everything went fine. The people you sent to get me were extremely clever and discreet. It is great to see you, Angel."
+                "numQuotes": 1,
+                "triggerNPC": "ANGEL",
+                "triggerRecord": 14,
+                "userInterface": "TURN_UI_OFF"
+            },
+            {
+                "index": 9,
+                "eraseOnceSaid": true,
+                "quest": {
+                    "name": "RESCUE_MARIA",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 15, // "It is hard to believe I am here with you, Angel... But we must hurry! There were problems getting out. Kingpin's men will not be far behind. They will kill me if they see me, Angel. Other girls have met the same fate."
+                "numQuotes": 1,
+                "triggerNPC": "ANGEL",
+                "triggerRecord": 15
+            },
+            {
+                "index": 10,
+                "eraseOnceSaid": true,
+                "quest": {
+                    "name": "RESCUE_MARIA",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 15, // "It is hard to believe I am here with you, Angel... But we must hurry! There were problems getting out. Kingpin's men will not be far behind. They will kill me if they see me, Angel. Other girls have met the same fate."
+                "numQuotes": 1,
+                "triggerNPC": "ANGEL",
+                "triggerRecord": 23
+            },
+            {
+                "index": 11,
+                "requiredApproach": "EPC_IN_WRONG_SECTOR",
+                "quoteNum": 19, // "What are you doing? Where is Angel?"
+                "numQuotes": 1,
+                "setFactTrue": 158, // unnamed fact
+                "actionData": {
+                    "code": 168 // NPC_ACTION_SET_EPC_TO_NPC
+                }
+            },
+            {
+                "index": 12,
+                "requiredApproach": "TRIGGER_NPC",
+                "goToGridno": 8354,
+                "actionData": {
+                    "code": 264 // NPC_ACTION_REMOVE_NPC
+                }
+            },
+            {
+                "index": 13,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 158, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quoteNum": 22, // "I've never been so scared. Please take me to my brother now."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 14,
+                "factMustBeTrue": 158, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quoteNum": 19, // "What are you doing? Where is Angel?"
+                "numQuotes": 1
+            },
+            {
+                "index": 15,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 21, // "No, not now! The bullets... Do something about the shooting."
+                "numQuotes": 1
+            },
+            {
+                "index": 16,
+                "factMustBeTrue": 158, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 22, // "I've never been so scared. Please take me to my brother now."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 17,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 322, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quoteNum": 22, // "I've never been so scared. Please take me to my brother now."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 18,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "numQuotes": 1,
+                "setFactTrue": 322, // unnamed fact
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 19,
+                "factMustBeTrue": 158, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "requiredApproach": "THREATEN",
+                "quoteNum": 19, // "What are you doing? Where is Angel?"
+                "numQuotes": 1
+            }
+        ]
+    },
+    {
+        "profile": "JOEY",
+        "records": [
+            {
+                "index": 0,
+                "requiredApproach": "EPC_WHO_IS_RECRUITED",
+                "quoteNum": 13, // "I hope my dad's not drunk when I get home. He's gonna kill me... Well maybe, if I'm lucky, he won't be there."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 19, // "You're crazy!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 2,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 19, // "You're crazy!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 3,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 8, // "Uggh... mommy... mommy!"
+                "numQuotes": 1
+            },
+            {
+                "index": 4,
+                "requiredItem": "MONEY",
+                "factMustBeTrue": 109, // FACT_JOEY_IN_C5
+                "requiredApproach": "GIVINGITEM",
+                "quoteNum": 10, // "I bet ya won't even give me a chance to spend it before you force me to go home."
+                "numQuotes": 1
+            },
+            {
+                "index": 5,
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "DONE"
+                },
+                "quoteNum": 9, // "Just leave me alone."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 6,
+                "factMustBeTrue": 160, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 20, // "No more foolin' around, okay? I'll do exactly what you tell me - I promise!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 7,
+                "factMustBeTrue": 347, // unnamed fact
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 11, // "Okay, I'll go with you. Just don't let anything happen to me. My mom will be really disappointed if she isn't the one that gets to kill me."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 8,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 17, // "I tell you what... Since I know you're gonna save my skin with my mom, I'll let you in on something... Somebody's stashing cash down here. There's tons of it!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 9,
+                "eraseOnceSaid": true,
+                "firstDay": 255,
+                "numQuotes": 1
+            },
+            {
+                "index": 10,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 110, // FACT_JOEY_NEAR_MARTHA
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 14, // "I got lost, Mom... I took a wrong turn, and then I was a little confused as to where I was... and then they found me... I was really lucky, Mom."
+                "numQuotes": 1,
+                "triggerNPC": "MARTHA",
+                "triggerRecord": 7,
+                "actionData": {
+                    "code": 149 // NPC_ACTION_UN_RECRUIT_EPC
+                }
+            },
+            {
+                "index": 11,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 15, // "Okay, Mom... Uhh, dad hasn't been drinking, has he?"
+                "numQuotes": 1,
+                "endQuest": "RUNAWAY_JOEY",
+                "triggerNPC": "MARTHA",
+                "triggerRecord": 8,
+                "goToGridno": 18326
+            },
+            {
+                "index": 12,
+                "requiredApproach": "EPC_IN_WRONG_SECTOR",
+                "quoteNum": 12, // "What ya doing? You can't just leave me here! I'll be good... I swear."
+                "numQuotes": 1,
+                "setFactTrue": 160, // unnamed fact
+                "actionData": {
+                    "code": 168 // NPC_ACTION_SET_EPC_TO_NPC
+                }
+            },
+            {
+                "index": 13,
+                "factMustBeFalse": 109, // FACT_JOEY_IN_C5
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 16, // "I don't want to join you. I don't want to have anything to do with you. I just want to be left alone down here."
+                "numQuotes": 1
+            },
+            {
+                "index": 14,
+                "factMustBeTrue": 160, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quoteNum": 12, // "What ya doing? You can't just leave me here! I'll be good... I swear."
+                "numQuotes": 1
+            },
+            {
+                "index": 15,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 21, // "Make the shooting stop!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 16,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 350, // FACT_KINGPIN_WILL_LEARN_OF_MONEY_GONE
+                "factMustBeFalse": 109, // FACT_JOEY_IN_C5
+                "requiredApproach": "THREATEN",
+                "requiredOpinion": 80,
+                "quoteNum": 11, // "Okay, I'll go with you. Just don't let anything happen to me. My mom will be really disappointed if she isn't the one that gets to kill me."
+                "numQuotes": 1,
+                "setFactTrue": 347, // unnamed fact
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 17,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 109, // FACT_JOEY_IN_C5
+                "requiredApproach": "THREATEN",
+                "requiredOpinion": 80,
+                "quoteNum": 11, // "Okay, I'll go with you. Just don't let anything happen to me. My mom will be really disappointed if she isn't the one that gets to kill me."
+                "numQuotes": 1,
+                "setFactTrue": 347, // unnamed fact
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 18,
+                "factMustBeFalse": 109, // FACT_JOEY_IN_C5
+                "requiredApproach": "THREATEN",
+                "requiredOpinion": 80,
+                "quoteNum": 11, // "Okay, I'll go with you. Just don't let anything happen to me. My mom will be really disappointed if she isn't the one that gets to kill me."
+                "numQuotes": 1,
+                "triggerNPC": "JOEY",
+                "triggerRecord": 8,
+                "setFactTrue": 347 // unnamed fact
+            },
+            {
+                "index": 19,
+                "factMustBeTrue": 160, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "requiredApproach": "THREATEN",
+                "quoteNum": 12, // "What ya doing? You can't just leave me here! I'll be good... I swear."
+                "numQuotes": 1
+            }
+        ]
+    },
+    {
+        "profile": "SKYRIDER",
+        "records": [
+            {
+                "index": 0,
+                "requiredApproach": "EPC_WHO_IS_RECRUITED",
+                "quoteNum": 42, // "I can't wait 'til we get there. Haven't taken the bird out for a spin in a long while."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 43, // "You're one sick mother, Cap."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 2,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 38, // "I got no plans on havin' anything to do with you, Cap! You guys tried to kill me... Remember?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 3,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "factMustBeFalse": 48, // FACT_NPC_WOUNDED_BY_PLAYER
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 8, // "I need help... First aid..."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 4,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 122, // FACT_NPC_BANDAGED_TODAY
+                "factMustBeFalse": 48, // FACT_NPC_WOUNDED_BY_PLAYER
+                "quoteNum": 44, // "Thanks for getting me back on my feet, Cap."
+                "numQuotes": 1
+            },
+            {
+                "index": 5,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 50, // "Get things under control, then we'll yak all ya want."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 6,
+                "factMustBeTrue": 159, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quest": {
+                    "name": "ESCORT_SKYRIDER",
+                    "status": "INPROGRESS"
+                },
+                "quoteNum": 41, // "What's happenin', Cap? I thought you were gonna get me to my eggbeater..."
+                "numQuotes": 1
+            },
+            {
+                "index": 7,
+                "factMustBeTrue": 159, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "requiredApproach": "THREATEN",
+                "quoteNum": 39, // "Better change your tone, Cap! Or you're gonna have to take chopper lessons."
+                "numQuotes": 1
+            },
+            {
+                "index": 8,
+                "factMustBeTrue": 44, // unnamed fact
+                "firstDay": 255,
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 40, // "I'm strictly freelance, Cap. You can book me by the ride, but you ain't never gonna own me."
+                "numQuotes": 1
+            },
+            {
+                "index": 9,
+                "factMustBeTrue": 44, // unnamed fact
+                "firstDay": 255,
+                "requiredApproach": "THREATEN",
+                "quoteNum": 39, // "Better change your tone, Cap! Or you're gonna have to take chopper lessons."
+                "numQuotes": 1
+            },
+            {
+                "index": 10,
+                "factMustBeTrue": 46, // FACT_NPC_OWED_MONEY
+                "quoteNum": 11, // "You're grounded, Cap, 'til I see my money."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 119 // NPC_ACTION_REPORT_BALANCE
+                }
+            },
+            {
+                "index": 11,
+                "requiredItem": "MONEY",
+                "requiredApproach": "GIVINGITEM",
+                "quoteNum": 10, // "Money's always cool, Cap!"
+                "numQuotes": 1
+            },
+            {
+                "index": 12,
+                "factMustBeTrue": 136, // FACT_LOYALTY_LOW
+                "quoteNum": 49, // "Conditions ain't right for flying today, Cap. Sorry."
+                "numQuotes": 1
+            },
+            {
+                "index": 13,
+                "eraseOnceSaid": true,
+                "requiredOpinion": 20,
+                "quoteNum": 12, // "Skyrider. That's what they call me. Ain't nobody around here that can fly an eggbeater like me."
+                "numQuotes": 2,
+                "endQuest": "CHOPPER_PILOT",
+                "actionData": {
+                    "code": 51 // NPC_ACTION_GRANT_EXPERIENCE_2
+                }
+            },
+            {
+                "index": 14,
+                "factMustBeFalse": 44, // unnamed fact
+                "quest": {
+                    "name": "ESCORT_SKYRIDER",
+                    "status": "NOTSTARTED"
+                },
+                "requiredApproach": "FRIENDLY_DIRECT_OR_RECRUIT",
+                "requiredOpinion": 30,
+                "quoteNum": 14, // "You get me to my eggbeater in Drassen, Cap, and we might be able to work out some business."
+                "numQuotes": 1,
+                "setFactTrue": 346, // unnamed fact
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 15,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 43, // FACT_SKYRIDER_CLOSE_TO_CHOPPER
+                "factMustBeFalse": 44, // unnamed fact
+                "quoteNum": 15, // "There's my baby. She looks just fine, Cap. We're in business..."
+                "numQuotes": 5,
+                "endQuest": "ESCORT_SKYRIDER",
+                "triggerNPC": "SKYRIDER",
+                "triggerRecord": 20,
+                "setFactTrue": 44, // unnamed fact
+                "actionData": {
+                    "code": 149 // NPC_ACTION_UN_RECRUIT_EPC
+                }
+            },
+            {
+                "index": 16,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 44, // unnamed fact
+                "factMustBeFalse": 45, // FACT_SKYRIDER_USED_IN_MAPSCREEN
+                "quoteNum": 36, // "Okay. Just so we're straight on this, I'm a pilot, not a soldier. I'll do what I'm told 'til I get there, but ain't getting involved. I don't want no gun. I don't want to have to kill nobody."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 17,
+                "factMustBeTrue": 44, // unnamed fact
+                "factMustBeFalse": 45, // FACT_SKYRIDER_USED_IN_MAPSCREEN
+                "quoteNum": 37, // "Just show me on the map where ya wanna go, and I'll get ya there."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 18,
+                "requiredApproach": "EPC_IN_WRONG_SECTOR",
+                "quoteNum": 41, // "What's happenin', Cap? I thought you were gonna get me to my eggbeater..."
+                "numQuotes": 1,
+                "setFactTrue": 159, // unnamed fact
+                "actionData": {
+                    "code": 168 // NPC_ACTION_SET_EPC_TO_NPC
+                }
+            },
+            {
+                "index": 19,
+                "factMustBeTrue": 159, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quest": {
+                    "name": "ESCORT_SKYRIDER",
+                    "status": "INPROGRESS"
+                },
+                "lastDay": 4,
+                "requiredOpinion": 51,
+                "quoteNum": 1, // "What's up, Cap?"
+                "triggerRecord": 0,
+                "setFactTrue": 0, // FACT_OMERTA_LIBERATED
+                "giftItem": "65535",
+                "goToGridno": 110,
+                "actionData": {
+                    "code": 22 // NPC_ACTION_BECOME_ENEMY
+                }
+            },
+            {
+                "index": 20,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 52 // NPC_ACTION_GRANT_EXPERIENCE_3
+                }
+            },
+            {
+                "index": 21,
+                "factMustBeTrue": 346, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quest": {
+                    "name": "ESCORT_SKYRIDER",
+                    "status": "NOTSTARTED"
+                },
+                "requiredApproach": "RECRUIT",
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 22,
+                "factMustBeTrue": 159, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quest": {
+                    "name": "ESCORT_SKYRIDER",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 51, // "Thought you forgot about me."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            }
+        ]
+    },
+    {
+        "profile": "MARTHA",
+        "records": [
+            {
+                "index": 0,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 28, // "Why? Why?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 28, // "Why? Why?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 2,
+                "factMustBeFalse": 110, // FACT_JOEY_NEAR_MARTHA
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "SPECIAL_INITIAL_QUOTE",
+                "quoteNum": 22, // "Have you found him yet?"
+                "numQuotes": 1
+            },
+            {
+                "index": 3,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 8, // "Help! I need... a... doctor."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 4,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 31, // "Protect me. Please..."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 5,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 122, // FACT_NPC_BANDAGED_TODAY
+                "quoteNum": 30, // "Thank you for your concern."
+                "numQuotes": 1
+            },
+            {
+                "index": 6,
+                "eraseOnceSaid": true,
+                "requiredItem": "MONEY",
+                "requiredApproach": "GIVINGITEM",
+                "quoteNum": 10, // "Normally, I would't take money from a stranger, but we really need it. I'll see that it gets put to good use."
+                "numQuotes": 1
+            },
+            {
+                "index": 7,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 11, // "You go to your room, mister. And you just wait 'til your father gets home."
+                "numQuotes": 1,
+                "triggerNPC": "JOEY",
+                "triggerRecord": 11
+            },
+            {
+                "index": 8,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 112, // FACT_MERC_NEAR_NPC
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "DONE"
+                },
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 12, // "That boy... He's a good kid, you know. He just has a little bit of a wild streak in him. Thank you... I'll try and keep a closer eye on him next time."
+                "numQuotes": 3,
+                "triggerNPC": "MARTHA",
+                "triggerRecord": 19,
+                "setFactTrue": 271 // FACT_WILLIS_HEARD_ABOUT_JOEY_RESCUE
+            },
+            {
+                "index": 9,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 340, // FACT_JOEY_ALIVE
+                "factMustBeFalse": 271, // FACT_WILLIS_HEARD_ABOUT_JOEY_RESCUE
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "DONE"
+                },
+                "quoteNum": 29, // "I've been hoping to see you. I wanted to thank you for returning my Joey. I'm trying to keep a better eye on him... He's a bundle of energy, that boy. Maybe there's something I can do to show our appreciation..."
+                "numQuotes": 1,
+                "triggerNPC": "MARTHA",
+                "triggerRecord": 10
+            },
+            {
+                "index": 10,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 13, // "My husband works up at the hospital in Cambria. He's good friends with Doctor Willis. You mention our name if ever you need him. I'm sure he'll be of help..."
+                "numQuotes": 2,
+                "triggerNPC": "MARTHA",
+                "triggerRecord": 19,
+                "setFactTrue": 271 // FACT_WILLIS_HEARD_ABOUT_JOEY_RESCUE
+            },
+            {
+                "index": 11,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 305, // FACT_24_HOURS_SINCE_JOEY_RESCUED
+                "factMustBeFalse": 111, // FACT_JOEY_DEAD
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "DONE"
+                },
+                "quoteNum": 15, // "I can't thank you enough. Joey seems to be doing so much better now."
+                "numQuotes": 1
+            },
+            {
+                "index": 12,
+                "eraseOnceSaid": true,
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "NOTSTARTED"
+                },
+                "quoteNum": 16, // "I need your help. My boy, Joey, has run away from home. He's only fifteen, and I haven't seen him in three days. I've checked with everyone. None of his friends seem to know where he is."
+                "numQuotes": 6,
+                "startQuest": "RUNAWAY_JOEY",
+                "actionData": {
+                    "code": 136 // NPC_ACTION_ADD_JOEY_TO_WORLD
+                }
+            },
+            {
+                "index": 13,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 111, // FACT_JOEY_DEAD
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "DONE"
+                },
+                "quoteNum": 23, // "I know you're really busy, and I know you've already helped me out before, but Joey is gone again. I can't find him anywhere. Could you please keep an eye out for him?"
+                "numQuotes": 1,
+                "startQuest": "RUNAWAY_JOEY"
+            },
+            {
+                "index": 14,
+                "sayOncePerConvo": true,
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "FRIENDLY",
+                "quoteNum": 24, // "I don't know what's with that boy. He's been such a rebel lately."
+                "numQuotes": 1
+            },
+            {
+                "index": 15,
+                "sayOncePerConvo": true,
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "FRIENDLY",
+                "quoteNum": 25, // "It seems like only yesterday I was changing his diapers."
+                "numQuotes": 1
+            },
+            {
+                "index": 16,
+                "sayOncePerConvo": true,
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "DIRECT",
+                "quoteNum": 26, // "I'm worried sick. Joey always manages to find trouble."
+                "numQuotes": 1
+            },
+            {
+                "index": 17,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 27, // "Oh, my God... Oh, my heart can't take..."
+                "numQuotes": 1,
+                "triggerNPC": "MARTHA",
+                "triggerRecord": 20,
+                "actionData": {
+                    "code": 140 // NPC_ACTION_MARTHA_DIES
+                }
+            },
+            {
+                "index": 18,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 111, // FACT_JOEY_DEAD
+                "quest": {
+                    "name": "RUNAWAY_JOEY",
+                    "status": "DONE"
+                },
+                "quoteNum": 32, // "I have heard that the Queen is worried. She is getting desperate and will try anything to stop you. Please be careful."
+                "numQuotes": 1
+            },
+            {
+                "index": 19,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "numQuotes": 1,
+                "triggerNPC": "MARTHA",
+                "triggerRecord": 21,
+                "actionData": {
+                    "code": 10 // NPC_ACTION_BOOST_TOWN_LOYALTY
+                }
+            },
+            {
+                "index": 20,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 21,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "numQuotes": 1,
+                "triggerNPC": "MARTHA",
+                "triggerRecord": 22,
+                "actionData": {
+                    "code": 52 // NPC_ACTION_GRANT_EXPERIENCE_3
+                }
+            },
+            {
+                "index": 22,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 257 // NPC_ACTION_24_HOURS_SINCE_JOEY_RESCUED
+                }
+            }
+        ]
+    },
+    {
+        "profile": "JOHN",
+        "records": [
+            {
+                "index": 0,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 18, // "You're worse than them!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 18, // "You're worse than them!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 2,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 8, // "Goddamn... goddamn..."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 3,
+                "factMustBeTrue": 189, // FACT_MARY_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 25, // "You must help my wife..."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 4,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 122, // FACT_NPC_BANDAGED_TODAY
+                "quoteNum": 26, // "Thank you... We appreciate what you've done."
+                "numQuotes": 1
+            },
+            {
+                "index": 5,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 28, // "We can't carry on a conversation now! It's too darn dangerous."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 6,
+                "factMustBeFalse": 187, // FACT_MARY_ALIVE
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 27, // "Is Mary all right... She is okay, right?"
+                "numQuotes": 1
+            },
+            {
+                "index": 7,
+                "requiredApproach": "EPC_IN_WRONG_SECTOR",
+                "quoteNum": 11, // "Excuse me... but I don't remember Drassen looking like this."
+                "numQuotes": 1,
+                "setFactTrue": 161, // unnamed fact
+                "actionData": {
+                    "code": 149 // NPC_ACTION_UN_RECRUIT_EPC
+                }
+            },
+            {
+                "index": 8,
+                "eraseOnceSaid": true,
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "NOTSTARTED"
+                },
+                "quoteNum": 12, // "I'm afraid we really messed up good. Mary and I were supposed to be going to Aruba. My wife booked the tickets through one of her travel agent friends. Didn't know we were in the wrong country 'til we landed."
+                "numQuotes": 1,
+                "setFactTrue": 345, // unnamed fact
+                "userInterface": "TURN_UI_OFF",
+                "actionData": {
+                    "code": 186 // NPC_ACTION_TRIGGER_MARY_OR_JOHN_RECORD_9
+                }
+            },
+            {
+                "index": 9,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 13, // "Mary, please, I'm trying to talk. I know the ticket said Arulco, but how was I supposed to know that's not how the Arubans spell Aruba. I mean... these people speak Arubic."
+                "numQuotes": 2,
+                "actionData": {
+                    "code": 187 // NPC_ACTION_TRIGGER_MARY_OR_JOHN_RECORD_10
+                }
+            },
+            {
+                "index": 10,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 15, // "I wouldn't trust that slippery man to park my car. Now, I'm stuck here without a safe way to get back to the airport in Drassen. I can't wait to get my feet back on to American soil."
+                "numQuotes": 2,
+                "userInterface": "TURN_UI_ON",
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 11,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 187, // FACT_MARY_ALIVE
+                "requiredApproach": "EPC_WHO_IS_RECRUITED",
+                "quoteNum": 17, // "I can't wait to get on the plane and into the sky."
+                "numQuotes": 1
+            },
+            {
+                "index": 12,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 192, // FACT_MARY_OR_JOHN_ARRIVED
+                "factMustBeFalse": 187, // FACT_MARY_ALIVE
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 19, // "It's good to finally be here, but... losing Mary, it's hard to be grateful. I have no idea what to tell the children... and the grandchildren. It was a vacation I will never put behind me... Goodbye."
+                "numQuotes": 1,
+                "endQuest": "ESCORT_TOURISTS",
+                "actionData": {
+                    "code": 149 // NPC_ACTION_UN_RECRUIT_EPC
+                }
+            },
+            {
+                "index": 13,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 192, // FACT_MARY_OR_JOHN_ARRIVED
+                "factMustBeFalse": 193, // FACT_MARY_DEAD
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 20, // "Can't believe I'm finally seeing this place. A dead town in a dead-end country."
+                "numQuotes": 2,
+                "endQuest": "ESCORT_TOURISTS",
+                "triggerNPC": "MARY",
+                "triggerRecord": 12,
+                "userInterface": "TURN_UI_OFF",
+                "actionData": {
+                    "code": 149 // NPC_ACTION_UN_RECRUIT_EPC
+                }
+            },
+            {
+                "index": 14,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 22, // "Come to think of it, I have something you can use, but it's at home. They wouldn't let me take it on the plane. Customized myself a pair of real handy  sidearms to take care of any burglars that might need to be shot."
+                "numQuotes": 2,
+                "userInterface": "TURN_UI_ON",
+                "actionData": {
+                    "code": 188 // NPC_ACTION_ADD_JOHNS_GUN_SHIPMENT
+                }
+            },
+            {
+                "index": 15,
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "DONE"
+                },
+                "quoteNum": 24, // "I can't wait to be bowling with my buddies again. Be none too soon to get all this behind me as far as I'm concerned."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 16,
+                "requiredItem": "MONEY",
+                "requiredApproach": "GIVINGITEM",
+                "quoteNum": 10, // "I can't take money from you."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 1 // NPC_ACTION_DONT_ACCEPT_ITEM
+                }
+            },
+            {
+                "index": 17,
+                "factMustBeTrue": 161, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 29, // "Ya had me a little worried there. Didn't know if I'd ever see Drassen."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 18,
+                "factMustBeTrue": 161, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quoteNum": 11, // "Excuse me... but I don't remember Drassen looking like this."
+                "numQuotes": 1
+            },
+            {
+                "index": 19,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 187, // FACT_MARY_ALIVE
+                "requiredApproach": "EPC_WHO_IS_RECRUITED",
+                "quoteNum": 17, // "I can't wait to get on the plane and into the sky."
+                "numQuotes": 1
+            },
+            {
+                "index": 20,
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "DONE"
+                },
+                "requiredApproach": "SPECIAL_INITIAL_QUOTE",
+                "quoteNum": 24, // "I can't wait to be bowling with my buddies again. Be none too soon to get all this behind me as far as I'm concerned."
+                "numQuotes": 1
+            },
+            {
+                "index": 21,
+                "factMustBeTrue": 161, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "requiredApproach": "THREATEN",
+                "quoteNum": 6, // "Harassing an American abroad can get you in a lot of trouble. You don't want me reporting you to the embassy, do you?"
+                "numQuotes": 1
+            },
+            {
+                "index": 22,
+                "factMustBeTrue": 345, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 29, // "Ya had me a little worried there. Didn't know if I'd ever see Drassen."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 23,
+                "factMustBeTrue": 345, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "NOTSTARTED"
+                },
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 29, // "Ya had me a little worried there. Didn't know if I'd ever see Drassen."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            }
+        ]
+    },
+    {
+        "profile": "MARY",
+        "records": [
+            {
+                "index": 0,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 12, // "John was crazy for trusting you."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "INPROGRESS"
+                },
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 12, // "John was crazy for trusting you."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 2,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "quoteNum": 8, // "Oh, my gosh... I'm bleeding John... John?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 3,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 122, // FACT_NPC_BANDAGED_TODAY
+                "numQuotes": 1,
+                "triggerNPC": "JOHN",
+                "triggerRecord": 4
+            },
+            {
+                "index": 4,
+                "factMustBeTrue": 191, // FACT_JOHN_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 19, // "My husband is in pain."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 5,
+                "factMustBeFalse": 190, // FACT_JOHN_ALIVE
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "NOTSTARTED"
+                },
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 21, // "Oh, no... Oh, no..."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 6,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 22, // "Oh my! How can you even think about talking right now?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 7,
+                "requiredItem": "MONEY",
+                "requiredApproach": "GIVINGITEM",
+                "quoteNum": 10, // "Oh, no, you keep it. You can pick up all kinds of stuff at the Mary Lynn factory in Drassen. With the exchange rate, they're practically giving the stuff away."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 1 // NPC_ACTION_DONT_ACCEPT_ITEM
+                }
+            },
+            {
+                "index": 8,
+                "requiredApproach": "EPC_IN_WRONG_SECTOR",
+                "quoteNum": 13, // "I don't see the airport."
+                "numQuotes": 1,
+                "setFactTrue": 162, // unnamed fact
+                "actionData": {
+                    "code": 149 // NPC_ACTION_UN_RECRUIT_EPC
+                }
+            },
+            {
+                "index": 9,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 11, // "Well... that's not quite true, John. Paula told us to check the tickets and make sure everything was okay. You checked them, John. I specifically remember you checking them."
+                "numQuotes": 1,
+                "triggerNPC": "JOHN",
+                "triggerRecord": 9
+            },
+            {
+                "index": 10,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 15, // "My husband has no appreciation for history."
+                "numQuotes": 1,
+                "triggerNPC": "JOHN",
+                "triggerRecord": 10
+            },
+            {
+                "index": 11,
+                "factMustBeTrue": 190, // FACT_JOHN_ALIVE
+                "requiredApproach": "EPC_WHO_IS_RECRUITED",
+                "quoteNum": 14, // "The sooner I see the airport the better."
+                "numQuotes": 1
+            },
+            {
+                "index": 12,
+                "eraseOnceSaid": true,
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 17, // "This is all the vacation money we have. But, I don't mind giving it to you in the least. Just to be safely out of this country and back into the arms of my children and grandchildren, oh it's worth every dime."
+                "numQuotes": 1,
+                "giftItem": "MONEY"
+            },
+            {
+                "index": 13,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 192, // FACT_MARY_OR_JOHN_ARRIVED
+                "factMustBeFalse": 190, // FACT_JOHN_ALIVE
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 16, // "I have very mixed feelings about it. At least I'll see my grandchildren again, but they'll miss John. So will I. Oh, thank you nonetheless."
+                "numQuotes": 1,
+                "endQuest": "ESCORT_TOURISTS",
+                "actionData": {
+                    "code": 149 // NPC_ACTION_UN_RECRUIT_EPC
+                }
+            },
+            {
+                "index": 14,
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "DONE"
+                },
+                "quoteNum": 18, // "I just want to be in Cleveland. My mind is already there."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 15,
+                "factMustBeFalse": 190, // FACT_JOHN_ALIVE
+                "requiredApproach": "EPC_WHO_IS_RECRUITED",
+                "quoteNum": 20, // "Oh my God, John... John..."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 16,
+                "factMustBeTrue": 162, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "requiredApproach": "RECRUIT",
+                "quoteNum": 23, // "Finally. I thought you were going to leave me here forever."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 110 // NPC_ACTION_ASK_ABOUT_ESCORTING_EPC
+                }
+            },
+            {
+                "index": 17,
+                "factMustBeTrue": 162, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "quoteNum": 13, // "I don't see the airport."
+                "numQuotes": 1
+            },
+            {
+                "index": 18,
+                "eraseOnceSaid": true,
+                "requiredApproach": "DONE_GIVING_ITEM",
+                "numQuotes": 1,
+                "triggerNPC": "JOHN",
+                "triggerRecord": 14,
+                "actionData": {
+                    "code": 52 // NPC_ACTION_GRANT_EXPERIENCE_3
+                }
+            },
+            {
+                "index": 19,
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "DONE"
+                },
+                "requiredApproach": "SPECIAL_INITIAL_QUOTE",
+                "quoteNum": 18, // "I just want to be in Cleveland. My mind is already there."
+                "numQuotes": 1
+            },
+            {
+                "index": 20,
+                "factMustBeTrue": 162, // unnamed fact
+                "factMustBeFalse": 108, // FACT_NPC_ESCORTED
+                "requiredApproach": "THREATEN",
+                "quoteNum": 6, // "I'll do whatever you say."
+                "numQuotes": 1
+            },
+            {
+                "index": 21,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "NOTSTARTED"
+                },
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 21, // "Oh, no... Oh, no..."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 22,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "quest": {
+                    "name": "ESCORT_TOURISTS",
+                    "status": "NOTSTARTED"
+                },
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 21, // "Oh, no... Oh, no..."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            }
+        ]
+    },
+    {
+        "profile": "HERVE",
+        "records": [
+            {
+                "index": 0,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 2,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 8, // "Oh... is doctor here?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 3,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 122, // FACT_NPC_BANDAGED_TODAY
+                "quoteNum": 29, // "Oh, is so much better."
+                "numQuotes": 1
+            },
+            {
+                "index": 4,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 30, // "Is not safe to do business now. Can no enjoy drink! Stop fighting first!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 5,
+                "requiredApproach": "CLOSING_SHOP",
+                "quoteNum": 31, // "Is time for you to go now. We stay open late for you, then everybody want it, and I never sleep."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 6,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 216, // FACT_FIRST_BARTENDER
+                "quoteNum": 32, // "De Santos are also known for our amazing similarities. Dere are five of us, we are identical quintuplets. It is funny. We sound same, speak same things, and we are all bartenders in Arulco."
+                "numQuotes": 1,
+                "triggerNPC": "HERVE",
+                "triggerRecord": 7,
+                "actionData": {
+                    "code": 197 // NPC_ACTION_MAKE_NPC_FIRST_BARTENDER
+                }
+            },
+            {
+                "index": 7,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 220, // FACT_MANNY_IS_BARTENDER
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 33, // "Well, everyone except Manny. Poor Manny. He was born a day after de rest of us. He has spent his entire life trying to catch up. We hope one day he will be one of de Santos bartending brothers too."
+                "numQuotes": 2
+            },
+            {
+                "index": 8,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 217, // FACT_SECOND_BARTENDER
+                "quoteNum": 35, // "I believe you know of us. My brother has spoken of you, de soldiers who are going to save Arulco. I tell you, we wish you de best of luck cleaning out de mess dis country is in."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 198 // NPC_ACTION_MAKE_NPC_SECOND_BARTENDER
+                }
+            },
+            {
+                "index": 9,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 218, // FACT_THIRD_BARTENDER
+                "quoteNum": 36, // "My brothers tell me about you. We no meet yet. But, meet one, you meet them all, no? Heh. This what people say... Women, dey confuse us all de time. And me, I confuse de woman, let me tell you dis."
+                "numQuotes": 3,
+                "actionData": {
+                    "code": 199 // NPC_ACTION_MAKE_NPC_THIRD_BARTENDER
+                }
+            },
+            {
+                "index": 10,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 219, // FACT_FOURTH_BARTENDER
+                "quoteNum": 39, // "I bet you think you have seen me before. I have heard very much about you from my brothers and de others. You are de one who will give birth to a new Arulco, an Arulco free and equal for everyone. De people are in awe of you."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 200 // NPC_ACTION_MAKE_NPC_FOURTH_BARTENDER
+                }
+            },
+            {
+                "index": 11,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 220, // FACT_MANNY_IS_BARTENDER
+                "quoteNum": 40, // "It is a great time in de history of de Santos brothers. We are all bartenders now, even Manny, who many said would never be able to open a beer, has joined us. Our dead father sheds his tears in pride."
+                "numQuotes": 1
+            },
+            {
+                "index": 12,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 216, // FACT_FIRST_BARTENDER
+                "quoteNum": 41, // "Yes, you are not the first to notice dat we look very similar. I do not understand, since de differences are obvious to me."
+                "numQuotes": 1
+            },
+            {
+                "index": 13,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 218, // FACT_THIRD_BARTENDER
+                "quoteNum": 42, // "Yes. Many have mentioned dat I am de most handsome of de brothers."
+                "numQuotes": 1
+            },
+            {
+                "index": 14,
+                "sayOncePerConvo": true,
+                "requiredApproach": "THREATEN",
+                "quoteNum": 43, // "Perhaps, you have had too much to drink already."
+                "numQuotes": 1
+            },
+            {
+                "index": 15,
+                "factMustBeTrue": 289, // FACT_NPC_HOSTILE_OR_PISSED_OFF
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 16,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 8, // "Oh... is doctor here?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 17,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 30, // "Is not safe to do business now. Can no enjoy drink! Stop fighting first!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 18,
+                "factMustBeTrue": 289, // FACT_NPC_HOSTILE_OR_PISSED_OFF
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            }
+        ]
+    },
+    {
+        "profile": "PETER",
+        "records": [
+            {
+                "index": 0,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 2,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 8, // "Oh... is doctor here?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 3,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 122, // FACT_NPC_BANDAGED_TODAY
+                "quoteNum": 29, // "Oh, is so much better."
+                "numQuotes": 1
+            },
+            {
+                "index": 4,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 30, // "Is not safe to do business now. Can no enjoy drink! Stop fighting first!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 5,
+                "requiredApproach": "CLOSING_SHOP",
+                "quoteNum": 31, // "Is time for you to go now. We stay open late for you, then everybody want it, and I never sleep."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 6,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 216, // FACT_FIRST_BARTENDER
+                "quoteNum": 32, // "De Santos are also known for our amazing similarities. Dere are five of us, we are identical quintuplets. It is funny. We sound same, speak same things, and we are all bartenders in Arulco."
+                "numQuotes": 1,
+                "triggerNPC": "HERVE",
+                "triggerRecord": 7,
+                "actionData": {
+                    "code": 197 // NPC_ACTION_MAKE_NPC_FIRST_BARTENDER
+                }
+            },
+            {
+                "index": 7,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 220, // FACT_MANNY_IS_BARTENDER
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 33, // "Well, everyone except Manny. Poor Manny. He was born a day after de rest of us. He has spent his entire life trying to catch up. We hope one day he will be one of de Santos bartending brothers too."
+                "numQuotes": 2
+            },
+            {
+                "index": 8,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 217, // FACT_SECOND_BARTENDER
+                "quoteNum": 35, // "I believe you know of us. My brother has spoken of you, de soldiers who are going to save Arulco. I tell you, we wish you de best of luck cleaning out de mess dis country is in."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 198 // NPC_ACTION_MAKE_NPC_SECOND_BARTENDER
+                }
+            },
+            {
+                "index": 9,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 218, // FACT_THIRD_BARTENDER
+                "quoteNum": 36, // "My brothers tell me about you. We no meet yet. But, meet one, you meet them all, no? Heh. This what people say... Women, dey confuse us all de time. And me, I confuse de woman, let me tell you dis."
+                "numQuotes": 3,
+                "actionData": {
+                    "code": 199 // NPC_ACTION_MAKE_NPC_THIRD_BARTENDER
+                }
+            },
+            {
+                "index": 10,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 219, // FACT_FOURTH_BARTENDER
+                "quoteNum": 39, // "I bet you think you have seen me before. I have heard very much about you from my brothers and de others. You are de one who will give birth to a new Arulco, an Arulco free and equal for everyone. De people are in awe of you."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 200 // NPC_ACTION_MAKE_NPC_FOURTH_BARTENDER
+                }
+            },
+            {
+                "index": 11,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 220, // FACT_MANNY_IS_BARTENDER
+                "quoteNum": 40, // "It is a great time in de history of de Santos brothers. We are all bartenders now, even Manny, who many said would never be able to open a beer, has joined us. Our dead father sheds his tears in pride."
+                "numQuotes": 1
+            },
+            {
+                "index": 12,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 216, // FACT_FIRST_BARTENDER
+                "quoteNum": 41, // "Yes, you are not the first to notice dat we look very similar. I do not understand, since de differences are obvious to me."
+                "numQuotes": 1
+            },
+            {
+                "index": 13,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 218, // FACT_THIRD_BARTENDER
+                "quoteNum": 42, // "Yes. Many have mentioned dat I am de most handsome of de brothers."
+                "numQuotes": 1
+            },
+            {
+                "index": 14,
+                "sayOncePerConvo": true,
+                "requiredApproach": "THREATEN",
+                "quoteNum": 43, // "Perhaps, you have had too much to drink already."
+                "numQuotes": 1
+            },
+            {
+                "index": 15,
+                "factMustBeTrue": 289, // FACT_NPC_HOSTILE_OR_PISSED_OFF
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 16,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 8, // "Oh... is doctor here?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 17,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 30, // "Is not safe to do business now. Can no enjoy drink! Stop fighting first!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 18,
+                "factMustBeTrue": 289, // FACT_NPC_HOSTILE_OR_PISSED_OFF
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            }
+        ]
+    },
+    {
+        "profile": "ALBERTO",
+        "records": [
+            {
+                "index": 0,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 2,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 8, // "Oh... is doctor here?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 3,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 122, // FACT_NPC_BANDAGED_TODAY
+                "quoteNum": 29, // "Oh, is so much better."
+                "numQuotes": 1
+            },
+            {
+                "index": 4,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 30, // "Is not safe to do business now. Can no enjoy drink! Stop fighting first!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 5,
+                "requiredApproach": "CLOSING_SHOP",
+                "quoteNum": 31, // "Is time for you to go now. We stay open late for you, then everybody want it, and I never sleep."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 6,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 216, // FACT_FIRST_BARTENDER
+                "quoteNum": 32, // "De Santos are also known for our amazing similarities. Dere are five of us, we are identical quintuplets. It is funny. We sound same, speak same things, and we are all bartenders in Arulco."
+                "numQuotes": 1,
+                "triggerNPC": "HERVE",
+                "triggerRecord": 7,
+                "actionData": {
+                    "code": 197 // NPC_ACTION_MAKE_NPC_FIRST_BARTENDER
+                }
+            },
+            {
+                "index": 7,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 220, // FACT_MANNY_IS_BARTENDER
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 33, // "Well, everyone except Manny. Poor Manny. He was born a day after de rest of us. He has spent his entire life trying to catch up. We hope one day he will be one of de Santos bartending brothers too."
+                "numQuotes": 2
+            },
+            {
+                "index": 8,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 217, // FACT_SECOND_BARTENDER
+                "quoteNum": 35, // "I believe you know of us. My brother has spoken of you, de soldiers who are going to save Arulco. I tell you, we wish you de best of luck cleaning out de mess dis country is in."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 198 // NPC_ACTION_MAKE_NPC_SECOND_BARTENDER
+                }
+            },
+            {
+                "index": 9,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 218, // FACT_THIRD_BARTENDER
+                "quoteNum": 36, // "My brothers tell me about you. We no meet yet. But, meet one, you meet them all, no? Heh. This what people say... Women, dey confuse us all de time. And me, I confuse de woman, let me tell you dis."
+                "numQuotes": 3,
+                "actionData": {
+                    "code": 199 // NPC_ACTION_MAKE_NPC_THIRD_BARTENDER
+                }
+            },
+            {
+                "index": 10,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 219, // FACT_FOURTH_BARTENDER
+                "quoteNum": 39, // "I bet you think you have seen me before. I have heard very much about you from my brothers and de others. You are de one who will give birth to a new Arulco, an Arulco free and equal for everyone. De people are in awe of you."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 200 // NPC_ACTION_MAKE_NPC_FOURTH_BARTENDER
+                }
+            },
+            {
+                "index": 11,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 220, // FACT_MANNY_IS_BARTENDER
+                "quoteNum": 40, // "It is a great time in de history of de Santos brothers. We are all bartenders now, even Manny, who many said would never be able to open a beer, has joined us. Our dead father sheds his tears in pride."
+                "numQuotes": 1
+            },
+            {
+                "index": 12,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 216, // FACT_FIRST_BARTENDER
+                "quoteNum": 41, // "Yes, you are not the first to notice dat we look very similar. I do not understand, since de differences are obvious to me."
+                "numQuotes": 1
+            },
+            {
+                "index": 13,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 218, // FACT_THIRD_BARTENDER
+                "quoteNum": 42, // "Yes. Many have mentioned dat I am de most handsome of de brothers."
+                "numQuotes": 1
+            },
+            {
+                "index": 14,
+                "sayOncePerConvo": true,
+                "requiredApproach": "THREATEN",
+                "quoteNum": 43, // "Perhaps, you have had too much to drink already."
+                "numQuotes": 1
+            },
+            {
+                "index": 15,
+                "factMustBeTrue": 289, // FACT_NPC_HOSTILE_OR_PISSED_OFF
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 16,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 8, // "Oh... is doctor here?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 17,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 30, // "Is not safe to do business now. Can no enjoy drink! Stop fighting first!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 18,
+                "factMustBeTrue": 289, // FACT_NPC_HOSTILE_OR_PISSED_OFF
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            }
+        ]
+    },
+    {
+        "profile": "CARLO",
+        "records": [
+            {
+                "index": 0,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "ENEMY_NPC_QUOTE",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 1,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 81, // FACT_NPC_IS_ENEMY
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 21 // NPC_ACTION_TRIGGER_FRIEND_WITH_HOSTILE_QUOTE
+                }
+            },
+            {
+                "index": 2,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "ONE_OF_FOUR_STANDARD",
+                "quoteNum": 8, // "Oh... is doctor here?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 3,
+                "sayOncePerConvo": true,
+                "factMustBeTrue": 122, // FACT_NPC_BANDAGED_TODAY
+                "quoteNum": 29, // "Oh, is so much better."
+                "numQuotes": 1
+            },
+            {
+                "index": 4,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "SECTOR_NOT_SAFE",
+                "quoteNum": 30, // "Is not safe to do business now. Can no enjoy drink! Stop fighting first!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 5,
+                "requiredApproach": "CLOSING_SHOP",
+                "quoteNum": 31, // "Is time for you to go now. We stay open late for you, then everybody want it, and I never sleep."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 6,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 216, // FACT_FIRST_BARTENDER
+                "quoteNum": 32, // "De Santos are also known for our amazing similarities. Dere are five of us, we are identical quintuplets. It is funny. We sound same, speak same things, and we are all bartenders in Arulco."
+                "numQuotes": 1,
+                "triggerNPC": "HERVE",
+                "triggerRecord": 7,
+                "actionData": {
+                    "code": 197 // NPC_ACTION_MAKE_NPC_FIRST_BARTENDER
+                }
+            },
+            {
+                "index": 7,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 220, // FACT_MANNY_IS_BARTENDER
+                "requiredApproach": "TRIGGER_NPC",
+                "quoteNum": 33, // "Well, everyone except Manny. Poor Manny. He was born a day after de rest of us. He has spent his entire life trying to catch up. We hope one day he will be one of de Santos bartending brothers too."
+                "numQuotes": 2
+            },
+            {
+                "index": 8,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 217, // FACT_SECOND_BARTENDER
+                "quoteNum": 35, // "I believe you know of us. My brother has spoken of you, de soldiers who are going to save Arulco. I tell you, we wish you de best of luck cleaning out de mess dis country is in."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 198 // NPC_ACTION_MAKE_NPC_SECOND_BARTENDER
+                }
+            },
+            {
+                "index": 9,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 218, // FACT_THIRD_BARTENDER
+                "quoteNum": 36, // "My brothers tell me about you. We no meet yet. But, meet one, you meet them all, no? Heh. This what people say... Women, dey confuse us all de time. And me, I confuse de woman, let me tell you dis."
+                "numQuotes": 3,
+                "actionData": {
+                    "code": 199 // NPC_ACTION_MAKE_NPC_THIRD_BARTENDER
+                }
+            },
+            {
+                "index": 10,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 219, // FACT_FOURTH_BARTENDER
+                "quoteNum": 39, // "I bet you think you have seen me before. I have heard very much about you from my brothers and de others. You are de one who will give birth to a new Arulco, an Arulco free and equal for everyone. De people are in awe of you."
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 200 // NPC_ACTION_MAKE_NPC_FOURTH_BARTENDER
+                }
+            },
+            {
+                "index": 11,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 220, // FACT_MANNY_IS_BARTENDER
+                "quoteNum": 40, // "It is a great time in de history of de Santos brothers. We are all bartenders now, even Manny, who many said would never be able to open a beer, has joined us. Our dead father sheds his tears in pride."
+                "numQuotes": 1
+            },
+            {
+                "index": 12,
+                "eraseOnceSaid": true,
+                "factMustBeFalse": 216, // FACT_FIRST_BARTENDER
+                "quoteNum": 41, // "Yes, you are not the first to notice dat we look very similar. I do not understand, since de differences are obvious to me."
+                "numQuotes": 1
+            },
+            {
+                "index": 13,
+                "eraseOnceSaid": true,
+                "factMustBeTrue": 218, // FACT_THIRD_BARTENDER
+                "quoteNum": 42, // "Yes. Many have mentioned dat I am de most handsome of de brothers."
+                "numQuotes": 1
+            },
+            {
+                "index": 14,
+                "sayOncePerConvo": true,
+                "requiredApproach": "THREATEN",
+                "quoteNum": 43, // "Perhaps, you have had too much to drink already."
+                "numQuotes": 1
+            },
+            {
+                "index": 15,
+                "factMustBeTrue": 289, // FACT_NPC_HOSTILE_OR_PISSED_OFF
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 16,
+                "factMustBeTrue": 68, // FACT_NPC_BLEEDING
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 8, // "Oh... is doctor here?"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 17,
+                "factMustBeFalse": 31, // FACT_CURRENT_SECTOR_IS_SAFE
+                "requiredApproach": "BUYSELL",
+                "quoteNum": 30, // "Is not safe to do business now. Can no enjoy drink! Stop fighting first!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            },
+            {
+                "index": 18,
+                "factMustBeTrue": 289, // FACT_NPC_HOSTILE_OR_PISSED_OFF
+                "requiredApproach": "DECLARATION_OF_HOSTILITY",
+                "quoteNum": 28, // "You low life!"
+                "numQuotes": 1,
+                "actionData": {
+                    "code": 24 // NPC_ACTION_CLOSE_DIALOGUE_PANEL
+                }
+            }
+        ]
+    }
+]
+

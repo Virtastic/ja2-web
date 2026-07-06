@@ -1,0 +1,49 @@
+$schema: http://json-schema.org/draft-04/schema#
+type: array
+title: Calibres
+items:
+  type: object
+  title: Calibre
+  description: A calibre for weapons in the game. The calibre defines mostly sounds and type of weapon.
+  properties:
+    index:
+      title: Internal numeric id
+      $ref: types/uint16.schema.yaml
+    internalName:
+      title: Internal name
+      $ref: types/id.schema.yaml
+    sound:
+      title: Shot sound
+      description: Path to sound that is played when a single shot is fired.
+      $ref: types/resource-path.schema.yaml
+    burstSound:
+      title: Burst sound
+      description: |
+        Path to sounds that are played as burst sounds for this calibre.
+        
+        %d will replaced with the amount of bullets left in the gun.
+      $ref: types/resource-path.schema.yaml
+    silencedSound:
+      title: Silenced shot sound
+      description: Path to sound that is played when a single shot is fired and gun is silenced somehow.
+      $ref: types/resource-path.schema.yaml
+    silencedBurstSound:
+      title: Silenced burst sound
+      description: |
+        Path to sounds that are played as burst sounds for this calibre when the gun is silenced somehow.
+        
+        %d will replaced with the amount of bullets left in the gun.
+      $ref: types/resource-path.schema.yaml
+    showInHelpText:
+      type: boolean
+      title: Show in help text
+      description: Show the calibre in a guns help text.
+    monsterWeapon:
+      type: boolean
+      title: Is monster weapon
+      description: Is this calibre used for monster attacks
+  required:
+  - index
+  - internalName
+  - showInHelpText
+  - monsterWeapon

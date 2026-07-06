@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>JA2 Stracciatella Launcher</title>
+<style>
+  /* Faithful recreation of the FLTK launcher (520x380, tabbed). */
+  html,body{margin:0;background:#4a4a4a;font:13px "Helvetica Neue",Arial,sans-serif;height:100%}
+  #win{width:520px;min-height:380px;background:#d8d8d8;margin:24px auto;border:1px solid #222;
+       box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;flex-direction:column}
+  #titlebar{background:linear-gradient(#666,#3d3d3d);color:#eee;padding:5px 10px;font-size:12px}
+  #tabs{display:flex;border-bottom:2px solid #b0b0b0;background:#c8c8c8}
+  #tabs button{border:1px solid #999;border-bottom:none;background:#c0c0c0;padding:6px 14px;
+       margin:4px 2px -2px 2px;cursor:pointer;border-radius:4px 4px 0 0;font-size:13px;color:#00458a}
+  #tabs button.active{background:#d8d8d8;border-bottom:2px solid #d8d8d8;font-weight:bold}
+  .tab{display:none;padding:14px;flex:1}
+  .tab.active{display:block}
+  label{display:block;margin:10px 0 3px;color:#222}
+  input[type=text],select{width:calc(100% - 12px);padding:6px;border:2px inset #bbb;background:#fff;font-size:13px}
+  .row{display:flex;gap:6px;align-items:end}
+  .row>div{flex:1}
+  button.fl{background:#c9c9c9;border:2px outset #e8e8e8;padding:5px 12px;cursor:pointer;font-size:13px}
+  button.fl:active{border-style:inset}
+  #playBtn{display:block;margin:14px auto 0;width:210px;height:56px;font-size:15px}
+  #editorBtn{display:block;margin:40px auto 0;width:210px;height:26px}
+  .mods{display:flex;gap:6px;margin-top:4px}
+  .mods select{height:150px;flex:1}
+  .modbtns{display:flex;flex-direction:column;gap:8px;justify-content:center}
+  .modbtns button{width:34px}
+  .checks{margin-top:12px}
+  #footer{display:flex;border-top:1px solid #aaa}
+  #jsonPath{flex:1;padding:6px;color:#333;font-size:12px;background:#d8d8d8;border:none}
+  .note{color:#555;font-size:12px;margin-top:4px}
+  #logs{width:calc(100% - 12px);height:220px;font:11px monospace;border:2px inset #bbb;background:#fff;
+        white-space:pre;overflow:auto;padding:4px}
+  #invalidRes{color:#c00;font-weight:bold;margin-left:10px;display:none}
+  .resnum{width:75px !important}
+</style>
+</head>
+<body>
+<div id="win">
+  <div id="titlebar">JA2 Stracciatella Launcher</div>
+  <div id="tabs">
+    <button data-tab="play" class="active">▶ Play</button>
+    <button data-tab="data">🗋 Data</button>
+    <button data-tab="mods">→ Mods</button>
+    <button data-tab="settings">☰ Settings</button>
+    <button data-tab="logs">▪ Logs</button>
+  </div>
+
+  <div class="tab active" id="tab-play">
+    <button class="fl" id="editorBtn">Start Map Editor</button>
+    <button class="fl" id="playBtn">Play Ja2 Stracciatella</button>
+  </div>
+
+  <div class="tab" id="tab-data">
+    <label>JA2 Game Directory:</label>
+    <input type="text" id="gameDir" value="/game/gamedata">
+    <label>Game Version:</label>
+    <select id="gameVersion">
+      <option value="DUTCH">Dutch</option>
+      <option value="ENGLISH" selected>English</option>
+      <option value="FRENCH">French</option>
+      <option value="GERMAN">German</option>
+      <option value="ITALIAN">Italian</option>
+      <option value="POLISH">Polish</option>
+      <option value="RUSSIAN">Russian</option>
+      <option value="RUSSIAN_GOLD">Russian (Gold)</option>
+      <option value="SIMPLIFIED_CHINESE">Simplified Chinese</option>
+    </select>
+    <label>Save Game Directory:</label>
+    <input type="text" id="saveDir" value="/userdata/.ja2/SavedGames">
+    <div class="note">Paths are inside the browser's virtual filesystem. Game data is bundled at /game/gamedata; saves persist in your browser (IndexedDB).</div>
+  </div>
+
+  <div class="tab" id="tab-mods">
+    <div class="note">Mods listed later in the "Enabled Mods" list have higher priority.</div>
+    <div class="mods">
+      <div style="flex:1">
+        <label>Enabled Mods:</label>
+        <select id="enabledMods" multiple></select>
+      </div>
+      <div class="modbtns">
+        <button class="fl" id="enableMod" title="Enable one or multiple mods.">◀</button>
+        <button class="fl" id="disableMod" title="Disable one or multiple mods.">▶</button>
+        <button class="fl" id="modUp" title="Move mod up in the list and decrease mod priority.">▲</button>
+        <button class="fl" id="modDown" title="Move mod down in the list and increase mod priority.">▼</button>
+      </div>
+      <div style="flex:1">
+        <label>Disabled Mods:</label>
+        <select id="availableMods" multiple></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab" id="tab-settings">
+    <label>Internal Resolution:</label>
+    <div class="row">
+      <input type="number" id="resX" class="resnum" min="640" value="640"> x
+      <input type="number" id="resY" class="resnum" min="480" value="480">
+      <select id="presetRes" style="width:130px">
+        <option value="">Predefined…</option>
+        <option>640x480</option><option>800x600</option><option>1024x768</option>
+        <option>1280x720</option><option>1600x900</option><option>1920x1080</option>
+      </select>
+      <span id="invalidRes">invalid!</span>
+    </div>
+    <div class="note">Texts and sprites become very small at higher internal resolutions. Menus and the strategic map are always 640x480.</div>
+    <label>Scaling Mode:</label>
+    <select id="scaling">
+      <option value="LINEAR">Linear Interpolation</option>
+      <option value="NEAR_PERFECT">Near perfect with oversampling</option>
+      <option value="PERFECT">Pixel perfect centered</option>
+    </select>
+    <div class="checks">
+      <label><input type="checkbox" id="fullscreen"> Fullscreen</label>
+      <label><input type="checkbox" id="playSounds" checked> Play Sounds</label>
+    </div>
+  </div>
+
+  <div class="tab" id="tab-logs">
+    <div class="note">You can view the logs of the latest JA2 Stracciatella execution here. If you want to report a bug, please include them in your bug report.</div>
+    <div id="logs">(no log captured yet — logs are captured when the game runs)</div>
+  </div>
+
+  <div id="footer">
+    <input id="jsonPath" readonly value="/userdata/.ja2/ja2.json">
+    <button class="fl" id="reloadBtn" title="Reload stracciatella engine options">⟳</button>
+    <button class="fl" id="saveBtn" title="Save stracciatella engine options">💾</button>
+  </div>
+</div>
+
+<script>
+// ---- IDBFS access: read/write the same IndexedDB the game's /userdata mount uses.
+// Emscripten IDBFS layout: database name = mountpoint ('/userdata'),
+// store 'FILE_DATA', key = absolute path, value = {timestamp:Date, mode:int, contents:Int8Array}
+var DB = '/userdata', STORE = 'FILE_DATA';
+var JSON_PATH = '/userdata/.ja2/ja2.json';
+var LOG_PATH = '/userdata/.ja2/ja2.log';
+var DIR_MODE = 16895 /*0o40777*/, FILE_MODE = 33206 /*0o100666*/;
+
+function withStore(mode, fn) {
+  return new Promise(function(resolve, reject){
+    var req = indexedDB.open(DB, 21); // emscripten IDBFS uses version 21
+    req.onupgradeneeded = function(e){
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+    };
+    req.onsuccess = function(){
+      var db = req.result;
+      var tx = db.transaction(STORE, mode);
+      var out = fn(tx.objectStore(STORE));
+      tx.oncomplete = function(){ db.close(); resolve(out && out.result !== undefined ? out.result : undefined); };
+      tx.onerror = function(){ db.close(); reject(tx.error); };
+    };
+    req.onerror = function(){ reject(req.error); };
+  });
+}
+function idbGet(path){ var r; return withStore('readonly', s => (r = s.get(path))).then(() => r && r.result); }
+function idbPut(path, value){ return withStore('readwrite', s => s.put(value, path)); }
+function ensureDirs(){
+  var now = new Date();
+  var dir = { timestamp: now, mode: DIR_MODE };
+  return idbPut('/userdata/.ja2', dir);
+}
+function readJa2Json(){
+  return idbGet(JSON_PATH).then(function(entry){
+    if (!entry || !entry.contents) return {};
+    var text = new TextDecoder().decode(new Uint8Array(entry.contents));
+    text = text.replace(/^\s*\/\/.*$/gm, ''); // ja2.json allows // comments
+    try { return JSON.parse(text); } catch(e){ return {}; }
+  });
+}
+function writeJa2Json(cfg){
+  var bytes = new TextEncoder().encode(JSON.stringify(cfg, null, 4));
+  return ensureDirs().then(function(){
+    return idbPut(JSON_PATH, { timestamp: new Date(), mode: FILE_MODE, contents: new Int8Array(bytes) });
+  });
+}
+
+// ---- Mods bundled in the wasm data package (fsroot/mods).
+var ALL_MODS = ['from-russia-with-love','generous-rebels','imp-quiz-honest-answers',
+                'o-fortuna','simplified-chinese-localization','test-json-dialogs'];
+
+// ---- UI wiring
+document.querySelectorAll('#tabs button').forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll('#tabs button').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('tab-' + b.dataset.tab).classList.add('active');
+  };
+});
+var $ = id => document.getElementById(id);
+
+function renderMods(enabled){
+  var en = $('enabledMods'), av = $('availableMods');
+  en.innerHTML = ''; av.innerHTML = '';
+  enabled.forEach(function(m){ en.add(new Option(m, m)); });
+  ALL_MODS.filter(m => !enabled.includes(m)).forEach(function(m){ av.add(new Option(m, m)); });
+}
+function enabledMods(){ return Array.from($('enabledMods').options).map(o => o.value); }
+
+$('enableMod').onclick = function(){
+  var sel = Array.from($('availableMods').selectedOptions).map(o => o.value);
+  renderMods(enabledMods().concat(sel));
+};
+$('disableMod').onclick = function(){
+  var sel = Array.from($('enabledMods').selectedOptions).map(o => o.value);
+  renderMods(enabledMods().filter(m => !sel.includes(m)));
+};
+$('modUp').onclick = function(){
+  var en = $('enabledMods'), i = en.selectedIndex;
+  if (i > 0) en.insertBefore(en.options[i], en.options[i-1]);
+};
+$('modDown').onclick = function(){
+  var en = $('enabledMods'), i = en.selectedIndex;
+  if (i >= 0 && i < en.options.length - 1) en.insertBefore(en.options[i+1], en.options[i]);
+};
+$('presetRes').onchange = function(){
+  if (!this.value) return;
+  var m = this.value.split('x');
+  $('resX').value = m[0]; $('resY').value = m[1];
+  validateRes();
+};
+function validateRes(){
+  var bad = +$('resX').value < 640 || +$('resY').value < 480;
+  $('invalidRes').style.display = bad ? 'inline' : 'none';
+  return !bad;
+}
+$('resX').oninput = $('resY').oninput = validateRes;
+
+function loadUI(){
+  readJa2Json().then(function(cfg){
+    if (cfg.game_dir) $('gameDir').value = cfg.game_dir;
+    if (cfg.save_game_dir) $('saveDir').value = cfg.save_game_dir;
+    if (cfg.resversion) $('gameVersion').value = cfg.resversion;
+    if (cfg.res){ var m = cfg.res.split('x'); $('resX').value = m[0]; $('resY').value = m[1]; }
+    if (cfg.scaling) $('scaling').value = cfg.scaling;
+    $('fullscreen').checked = !!cfg.fullscreen;
+    $('playSounds').checked = !cfg.nosound;
+    renderMods(cfg.mods || []);
+    validateRes();
+  });
+  idbGet(LOG_PATH).then(function(entry){
+    if (entry && entry.contents)
+      $('logs').textContent = new TextDecoder().decode(new Uint8Array(entry.contents));
+  });
+}
+function collectCfg(){
+  return {
+    game_dir: $('gameDir').value,
+    save_game_dir: $('saveDir').value,
+    res: $('resX').value + 'x' + $('resY').value,
+    resversion: $('gameVersion').value,
+    scaling: $('scaling').value,
+    fullscreen: $('fullscreen').checked,
+    nosound: !$('playSounds').checked,
+    mods: enabledMods()
+  };
+}
+function save(){ return validateRes() ? writeJa2Json(collectCfg()) : Promise.reject('invalid resolution'); }
+
+$('saveBtn').onclick = function(){ save().then(() => flash('saved')); };
+$('reloadBtn').onclick = loadUI;
+$('playBtn').onclick = function(){ save().then(() => location.href = 'index.html'); };
+$('editorBtn').onclick = function(){ save().then(() => location.href = 'index.html?editor'); };
+
+function flash(t){
+  var tb = document.getElementById('titlebar');
+  var old = tb.textContent; tb.textContent = 'JA2 Stracciatella Launcher — ' + t;
+  setTimeout(() => tb.textContent = old, 1200);
+}
+loadUI();
+</script>
+</body>
+</html>

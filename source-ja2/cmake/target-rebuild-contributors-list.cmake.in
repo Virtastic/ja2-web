@@ -1,0 +1,43 @@
+find_package(Git)
+
+if(NOT GIT_FOUND)
+    message(FATAL_ERROR "No git executable found, aborting.")
+endif()
+
+execute_process(
+    COMMAND ${GIT_EXECUTABLE} "shortlog" "--summary" "--group=author" "--group=trailer:co-authored-by"
+    WORKING_DIRECTORY "@CMAKE_SOURCE_DIR@"
+    OUTPUT_VARIABLE UNIQUE_CONTRIBUTORS
+)
+# cmake has very basic regex support, so we need two steps to remove the commit count
+string(REPLACE "\n" "@" UNIQUE_CONTRIBUTORS ${UNIQUE_CONTRIBUTORS})
+string(REGEX REPLACE "[\t ]+[0-9]+[\t ]+([^@]*)@" "\\1;" UNIQUE_CONTRIBUTORS ${UNIQUE_CONTRIBUTORS})
+
+# Cmake can only do case-sensitive sorting
+foreach(CONTRIBUTOR ${UNIQUE_CONTRIBUTORS})
+    string(TOLOWER ${CONTRIBUTOR} LOWER)
+    list(APPEND UNIQUE_CONTRIBUTORS_LOWERCASE ${LOWER})
+endforeach()
+list(SORT UNIQUE_CONTRIBUTORS_LOWERCASE)
+foreach(CONTRIBUTOR ${UNIQUE_CONTRIBUTORS_LOWERCASE})
+    foreach(CANDIDATE ${UNIQUE_CONTRIBUTORS})
+        string(TOLOWER ${CANDIDATE} LOWER)
+        string(REGEX REPLACE " <[^>]+>" "" CANDIDATE ${CANDIDATE})
+        if(CONTRIBUTOR STREQUAL LOWER)
+            list(APPEND SORTED_CONTRIBUTORS ${CANDIDATE})
+            break()
+        endif()
+    endforeach()
+endforeach()
+
+set(filename "@CMAKE_SOURCE_DIR@/contributors.txt")
+file(WRITE ${filename} "Founder of the project\n" )
+file(APPEND ${filename} "----------------------\n\n")
+file(APPEND ${filename} "Tron\n\n")
+file(APPEND ${filename} "Contributors (sorted alphabetically)\n")
+file(APPEND ${filename} "------------------------------------\n\n")
+foreach(CONTRIBUTOR ${SORTED_CONTRIBUTORS})
+    file(APPEND ${filename} "${CONTRIBUTOR}\n")
+endforeach()
+
+message("Contributors updated in ${filename}")

@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jagged Alliance 2 — Stracciatella Web</title>
+<style>
+  html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;font-family:system-ui,sans-serif}
+  /* #wrap is a full-viewport clip box; layoutCanvas() absolutely-positions and
+     sizes the canvas inside it per screen (native tactical vs. zoomed-to-fill UI). */
+  #wrap{position:relative;width:100vw;height:100vh;overflow:hidden}
+  canvas{outline:none;display:block;position:absolute;left:0;top:0;image-rendering:auto}
+  #status{position:fixed;left:0;right:0;top:40%;text-align:center;color:#c9a54a;font-size:18px;text-shadow:0 1px 3px #000}
+  #status .sub{color:#888;font-size:13px;margin-top:8px}
+  #fps{position:fixed;right:8px;top:6px;color:#4a4;font:12px monospace;opacity:.7;display:none}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas></div>
+<div id="status">Loading Jagged Alliance 2…<div class="sub" id="substatus"></div></div>
+<div id="fps"></div>
+<script>
+var statusEl = document.getElementById('status');
+var subEl = document.getElementById('substatus');
+
+// Per-screen canvas presentation. The engine runs at ONE global internal
+// resolution (the browser size, see computeStartResolution) — but each screen is
+// presented differently:
+//
+//  • BATTLE (tactical, GAME_SCREEN=5): the engine renders the whole framebuffer
+//    (the tactical viewport fills the screen minus the HUD bar), so we present the
+//    whole framebuffer fit-to-window → native/crisp, more battlefield visible.
+//  • Every other screen (menu, laptop, A.I.M., strategic map, save/load…): the
+//    engine draws fixed 640x480 art CENTERED in the big framebuffer (STD_SCREEN
+//    offset). We zoom that centered 640x480 sub-region up to fill the window, so
+//    those screens look exactly as they did at native 640x480 — no black island.
+//
+// Only the canvas *element's* CSS box changes (framebuffer untouched). SDL2's
+// emscripten mouse handler maps  mx = targetX * window->w / cssW ; with the
+// UI-zoom box below a click lands on the exact framebuffer pixel the game expects,
+// so input is accurate in both modes with no engine change.
+var GAME_SCREEN = 5, FADE_SCREEN = 13, MSG_BOX_SCREEN = 14;  // ScreenIDs.h
+window.__ja2Screen = (typeof window.__ja2Screen === 'number') ? window.__ja2Screen : 0;
+var _fitBusy = false;
+function layoutCanvas(){
+  var c = document.getElementById('canvas');
+  if (!c) return;
+  // CRITICAL: put NO CSS size on the canvas until AFTER SDL has created its
+  // window. Emscripten_CreateWindow probes the canvas CSS size and, if it already
+  // has one (external_size) on a resizable window, sizes the backing store from
+  // CSS instead of the requested resolution — a feedback loop that collapses the
+  // framebuffer. Gating on the boot flag keeps external_size=false at creation, so
+  // the backing store = the resolution we asked for.
+  if (!window.__ja2Booted) return;
+  var fbW = c.width || 640, fbH = c.height || 480;  // framebuffer SDL set
+  var vw = window.innerWidth, vh = window.innerHeight;
+  if (!vw || !vh) return;                           // 0x0 (headless) → skip
+  var left, top, cssW, cssH;
+  if (window.__ja2Screen === GAME_SCREEN){
+    // Battle: present whole framebuffer, fit-to-window (letter/pillarbox).
+    var s = Math.min(vw / fbW, vh / fbH);
+    cssW = fbW * s; cssH = fbH * s;
+    left = (vw - cssW) / 2; top = (vh - cssH) / 2;
+  } else {
+    // Fixed UI: zoom the centered 640x480 sub-region to fill the window.
+    var uiX = (fbW - 640) / 2, uiY = (fbH - 480) / 2;
+    var z = Math.min(vw / 640, vh / 480);
+    var offX = (vw - 640 * z) / 2, offY = (vh - 480 * z) / 2;
+    cssW = fbW * z; cssH = fbH * z;
+    left = offX - uiX * z; top = offY - uiY * z;
+  }
+  _fitBusy = true;
+  c.style.setProperty('width',  cssW + 'px', 'important');
+  c.style.setProperty('height', cssH + 'px', 'important');
+  c.style.setProperty('left',   left + 'px', 'important');
+  c.style.setProperty('top',    top  + 'px', 'important');
+  _fitBusy = false;
+}
+// onGameReady still calls fitCanvas() — keep the name as an alias.
+function fitCanvas(){ layoutCanvas(); }
+window.addEventListener('resize', layoutCanvas);
+(function watchCanvas(){
+  var c = document.getElementById('canvas');
+  if (!c) return;
+  // SDL resets the framebuffer/style when it creates the window; re-layout then.
+  try { new MutationObserver(function(){ if (!_fitBusy) layoutCanvas(); })
+        .observe(c, { attributes:true, attributeFilter:['style','width','height'] }); } catch(e){}
+})();
+setInterval(layoutCanvas, 500);
+// The engine (ja2_pump_frame) calls this on every screen change. Overlay/transition
+// screens (message box, fade) keep the current presentation mode so a dialog over
+// the battle screen doesn't suddenly zoom the whole view.
+window.__ja2SetScreen = function(screen){
+  if (screen === FADE_SCREEN || screen === MSG_BOX_SCREEN) return;  // keep mode
+  var wasBattle = window.__ja2Screen === GAME_SCREEN;
+  var isBattle  = screen === GAME_SCREEN;
+  window.__ja2Screen = screen;
+  if (isBattle !== wasBattle) layoutCanvas();  // only re-layout on mode change
+};
+
+// Starting internal resolution, written into ja2.json's `res` at boot (JA2
+// can't change resolution at runtime). fitCanvas() then scales the render up to
+// fill the browser window.
+//
+// DEFAULT = 640x480, the game's native UI resolution — menus, laptop, and
+// cutscenes (all fixed-size 640x480 art) fill the frame, and fitCanvas() scales
+// the whole render up to fill the browser window: big and native.
+//
+//   ?res=1280x960 sharper/more tactical view, but the fixed UI renders smaller.
+//   ?res=WxH      any specific resolution.
+//   ?res=window   match the browser window exactly (max tactical view).
+var DEFAULT_RES = '640x480';
+// Cap the internal resolution so an oversized window doesn't make JA2's per-frame
+// software surface blits expensive. Adjustable.
+var MAX_RES_W = 2560, MAX_RES_H = 1440;
+function windowRes(){
+  var vw = window.innerWidth, vh = window.innerHeight;
+  if (!vw || !vh) return DEFAULT_RES;                        // 0x0 (headless) → safe default
+  vw = Math.max(640, Math.min(MAX_RES_W, vw));
+  vh = Math.max(480, Math.min(MAX_RES_H, vh));
+  return (vw - vw % 2) + 'x' + (vh - vh % 2);
+}
+function computeStartResolution(){
+  // Explicit overrides win.
+  var m = (location.search.match(/[?&]res=(\d+)x(\d+)/i));
+  if (m) return Math.max(640, +m[1]) + 'x' + Math.max(480, +m[2]);
+  if (/[?&]res=classic\b/.test(location.search)) return DEFAULT_RES;  // old 640x480 everywhere
+  if (/[?&]res=window\b/.test(location.search)) return windowRes();
+  // DEFAULT: browser-sized internal resolution → battle screen renders natively
+  // (more map); layoutCanvas() zooms the fixed 640x480 screens back up to fill.
+  return windowRes();
+}
+
+// Pre-create the Web Audio context BEFORE SDL opens audio. SDL2's emscripten
+// backend reuses Module.SDL2.audioContext if it already exists (else it calls a
+// bare `new AudioContext()`, which on some devices yields a low-latency
+// "interactive" context bound to a degraded mono / low-sample-rate device path —
+// audio comes out garbled and blaring). Requesting a 48 kHz 'playback' context
+// (what media players use) routes game audio through the browser's normal
+// high-quality resampler regardless of the hardware device rate. SoundMan reads
+// back this context's sample rate, so decoders target it correctly.
+function presetAudioContext(){
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    var ctx;
+    try { ctx = new AC({ latencyHint: 'playback', sampleRate: 48000 }); }
+    catch(e){ ctx = new AC({ latencyHint: 'playback' }); }   // some devices reject a forced rate
+    Module.SDL2 = Module.SDL2 || {};
+    Module.SDL2.audioContext = ctx;
+    console.log('ja2 audio ctx:', ctx.sampleRate, 'Hz, maxCh',
+                ctx.destination && ctx.destination.maxChannelCount);
+  } catch(e){ console.warn('audio ctx preset failed:', e); }
+}
+
+var Module = {
+  canvas: document.getElementById('canvas'),
+  arguments: /[?&]editor\b/.test(location.search) ? ['-editor'] : [],
+  print: function(t){ console.log(t); },
+  printErr: function(t){ console.warn(t); },
+  setStatus: function(t){ if (t) subEl.textContent = t; },
+  preRun: [presetAudioContext, function(){
+    // Persistent home: config (~/.ja2), ja2.json, savegames all live here.
+    ENV.HOME = '/userdata';
+    ENV.TMPDIR = '/userdata/.ja2'; // ja2.log lands here → visible in launcher Logs tab, persisted
+    FS.mkdir('/userdata');
+    FS.mount(IDBFS, {}, '/userdata');
+    addRunDependency('idbfs-restore');
+    FS.syncfs(true, function(err){
+      if (err) console.warn('IDBFS restore failed', err);
+      try { FS.mkdir('/userdata/.ja2'); } catch(e){}
+      // Merge config: keep any launcher-written settings, point at the bundled
+      // data, and set the starting resolution to match the browser window.
+      var cfg = {};
+      try {
+        var txt = new TextDecoder().decode(FS.readFile('/userdata/.ja2/ja2.json'))
+                    .replace(/^\s*\/\/.*$/gm, '');           // ja2.json allows // comments
+        cfg = JSON.parse(txt);
+      } catch(e){}
+      if (!cfg.game_dir || cfg.game_dir.indexOf('/some/place') === 0) cfg.game_dir = '/game/gamedata';
+      cfg.res = computeStartResolution();
+      // JA2's default "PERFECT" (pixel-perfect) scaling hard-errors when the
+      // game resolution exceeds the desktop/display size — which our auto-res
+      // routinely does. LINEAR scaling has no such limit and scales any size
+      // cleanly, so it's the right default in the browser. (Launcher can still
+      // override to NEAR_PERFECT/PERFECT explicitly.)
+      if (!cfg.scaling) cfg.scaling = 'LINEAR';
+      FS.writeFile('/userdata/.ja2/ja2.json', JSON.stringify(cfg, null, 2));
+      console.log('ja2 start resolution:', cfg.res);
+      removeRunDependency('idbfs-restore');
+    });
+  }],
+  onRuntimeInitialized: function(){},
+  // A clean quit (the Quit menu, the window-close/SDL_QUIT event, or the game
+  // calling exit()) tears the runtime down and would leave a dead black tab.
+  // In the browser we'd rather restart: reload the page so the game boots back
+  // to the main menu. Saves/config already persisted to IndexedDB, so nothing
+  // is lost. onAbort (a fatal error) is handled separately below — no reload
+  // loop there.
+  onExit: function(){ restartGame('quit'); },
+  onAbort: function(what){
+    statusEl.style.display = '';
+    var missingData = false;
+    try { FS.stat('/game/gamedata/data'); } catch(e){ missingData = true; }
+    if (missingData) {
+      statusEl.innerHTML = 'Game data not found.<div class="sub">The original JA2 <b>Data/*.slf</b> files must be bundled: copy them to fsroot/gamedata/data/ and rebuild, then reload.</div>';
+    } else {
+      statusEl.textContent = 'Aborted: ' + what;
+    }
+  }
+};
+
+// Restart the game by reloading the page. Flush saves first, and guard against
+// a reload loop (if the game quits again within a few seconds of starting,
+// stop and show a message instead of looping forever).
+var _restarting = false;
+function restartGame(reason){
+  if (_restarting) return;
+  _restarting = true;
+  try { FS.syncfs(false, function(){ doReload(); }); } catch(e){ doReload(); }
+  function doReload(){
+    try {
+      var last = +sessionStorage.getItem('ja2_restart_ts') || 0;
+      var n = (+sessionStorage.getItem('ja2_restart_n') || 0);
+      var now = Date.now();
+      if (now - last < 4000){ n++; } else { n = 0; }
+      sessionStorage.setItem('ja2_restart_ts', String(now));
+      sessionStorage.setItem('ja2_restart_n', String(n));
+      if (n >= 3){                                   // looping — stop
+        sessionStorage.removeItem('ja2_restart_n');
+        statusEl.style.display = '';
+        statusEl.innerHTML = 'Game exited (' + reason + ').<div class="sub">Reload the page to play again.</div>';
+        return;
+      }
+    } catch(e){}
+    location.reload();
+  }
+}
+
+// Flush saves/config to IndexedDB. Called on interval, tab-hide, and by the game after saves.
+window.__ja2Sync = function(){ try { FS.syncfs(false, function(){}); } catch(e){} };
+setInterval(window.__ja2Sync, 15000);
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'hidden') window.__ja2Sync();
+});
+addEventListener('pagehide', function(){ window.__ja2Sync(); });
+
+// Web Audio needs a user gesture to start. Audio here is owned by SDL2's
+// emscripten driver (miniaudio is used only as a codec, with MA_NO_DEVICE_IO),
+// so the SDL2 AudioContext is the only one to resume.
+function resumeAudio(){
+  try {
+    var ctx = Module.SDL2 && Module.SDL2.audioContext;
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  } catch(e){}
+}
+addEventListener('click', resumeAudio);
+addEventListener('keydown', resumeAudio);
+
+// ---- Main-loop pump (CS-Web pattern) ----
+// MessageChannel messages are not throttled in hidden tabs; RAF paces us to
+// vsync when visible. The C++ side self-limits game cycles to 144Hz.
+var pumpStarted = false;
+window.__pumpErrors = 0;
+function startPump(){
+  if (pumpStarted) return;
+  pumpStarted = true;
+  statusEl.style.display = 'none';
+  var mc = new MessageChannel();
+  var scheduled = false;
+  var frames = 0, lastT = performance.now();
+  var fpsEl = document.getElementById('fps');
+  function scheduleNext(){
+    if (scheduled) return;
+    scheduled = true;
+    // Visible: pace to vsync via RAF. Hidden: RAF is throttled/stopped by the
+    // browser, so drive via MessageChannel — but cap to ~120Hz with a timer so
+    // a backgrounded tab keeps running without pinning a CPU core (RAF would
+    // give 0fps; a bare postMessage loop gave ~200k fps).
+    if (document.hidden) setTimeout(function(){ mc.port2.postMessage(0); }, 8);
+    else requestAnimationFrame(function(){ mc.port2.postMessage(0); });
+  }
+  mc.port1.onmessage = function(){
+    scheduled = false;
+    try { Module._ja2_pump_frame(); }
+    catch(e){
+      // The game called exit() (Quit menu / SDL_QUIT). Emscripten unwinds the
+      // pump call with an ExitStatus; restart instead of ending the tab.
+      if (e && (e.name === 'ExitStatus' || /ExitStatus/.test(String(e)))){
+        restartGame('exit');
+        return; // stop pumping; restartGame reloads
+      }
+      if (++window.__pumpErrors > 3){
+        console.error('pump stopped after repeated errors', e);
+        restartGame('error');
+        return; // do not reschedule
+      }
+      console.error('pump error', e);
+    }
+    frames++;
+    var now = performance.now();
+    if (now - lastT > 1000){
+      fpsEl.textContent = frames + ' fps';
+      frames = 0; lastT = now;
+    }
+    scheduleNext();
+  };
+  mc.port2.postMessage(0);
+}
+
+// The game calls Module.onGameReady from MainLoop() once init succeeded;
+// only then is it safe to pump. If main() bails early we show its error.
+Module.onGameReady = function(){ window.__ja2Booted = true; startPump(); layoutCanvas(); };
+</script>
+<!-- Standalone game-data package (~860MB): hooks Module.addRunDependency so
+     ja2.js waits until the SLF archives are mounted at /game/gamedata. -->
+<script src="ja2-lean.js"></script>
+<script src="ja2.js"></script>
+</body>
+</html>

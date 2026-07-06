@@ -1,0 +1,196 @@
+ARMY_COMPOSITION, PATROL_GROUP, GARRISON_GROUP: pointless padding
+AddCharacterToDeadList(): one caller
+BeginMapUIMessage(): move from tactical to strategic
+BlitMineText(): code duplication
+BtnHelpScreenDontShowHelpAgainCallback(): empty
+CalculateOverrideStatus(): szFilename yuck
+CaptureTimerCallback(): complicated
+CheckForAndHandleSoldierDeath(): interface complicated, return *pfMadeCorpse?
+CorpseHit(): empty
+Create16BPPPaletteShaded(): callers
+CreateEnemyGlow16BPPPalette(), CreateEnemyGreyGlow16BPPPalette(): ?
+DONT_DISPLAY_TEXT: what is this good for?
+DeathTimerCallback(): complicated
+DecideActionBlack(): bCanAttack != TRUE && bCanAttack != FALSE strange
+DisplayAllDealersCash(): MARK_DIRTY necessary?
+DisplayEmploymentinformation(): code duplication
+DisplayEmploymentinformation(): pointless loop
+DisplayOrderGrid(): call IsMercDead() more early
+DisplayPurchasedItems(): iSubTotal undefined value
+DoneFadeInActionLeaveBasement(): empty
+DoneFadeInWarp(): empty
+DoneFadeInWarp(): pointless?
+DoorToggleLockedCallback(): pointless?
+DrawBreathUIBar(): overdraw
+EVENT_SoldierGotHit(): arguments for parameter ubHitLocation inconsistent
+EnoughTimeOnAssignment(): complicated
+EnvBeginRainStorm(), EnvEndRainStorm(): TODO
+EvaluateWorld(): complicated
+ExecuteGameEvent(): code duplication
+Filler, Padding, Unused, filler: remove, partially bogus
+FindCacheStructDataIndex(): should return pointer instead of index
+FindValidInsertionCode(): MARK_DIRTY necessary?
+GetDialogueDataFilename(): checking for MANNY does nothing
+GetNumberOfPastMercsOnPlayersTeam(): callers
+GetSectorIDString(): complicated
+GetTimeRemainingOnSoldiersContract(): callers
+GetTimeRemainingOnSoldiersInsuranceContract(): callers
+GetZLevelOfItemPoolGivenStructure(): third parameter only tested for != NULL
+Handle.*TextEvent(): code duplication
+HandleCompatibleAmmoUI(): if (gbCompatibleAmmo[cnt]) gbCompatibleAmmo[cnt] = FALSE;
+HandleDefiniteUnloadingOfWorld(): use enum
+HandleFaceHilights(): overdraw?
+HandleHighLightedText(): MARK_DIRTY necessary?
+HandleMoraleEventForSoldier(): callers
+HandleOpinionOfTownsAboutSoldier(): empty
+HandleSummaryInput(): fallthrough SDLK_ESCAPE -> SDLK_RETURN?
+HeliCharacterDialogue(): callers
+HourlyMoraleUpdate(): strategic_morale_update_counter not loaded/saved
+IMPVideoObjects.h: many needlessly called functions?
+I_CHANGELEVEL: unused
+IsItRaining(): complicated
+IsMapScreenWorldItemVisibleInMapInventory(): complicated
+KeyRingSlotInvClickCallback: one caller
+LackOfProgressTolerance(): callers
+LightIlluminateWall(): empty
+LoadCivQuoteFile(): string copy necessary?
+LoadEnemySoldiersFromTempFile(): ubStrategicCreatures > ubNumCreatures
+LoadSaveScreenHandle(): Investigate if the duplication can be removed
+LoadSavedGameHeader(): invalid use of strlen()
+LoadSavedGameWarningMessageBoxCallBack(): users
+LoadSummary(): filename yuck
+MAPInvClickCamoCallback(): empty
+MAPInvMoveCamoCallback(): empty
+MERC_POPUP_PREPARE_FLAGS_TRANS_BACK: complicated
+MaxDistanceVisible(): inline
+MercDepartEquipmentBoxCallBack(): users
+MergeMessageBoxCallBack(): users
+MoveBullet(): RemoveBullet() before BulletMissed() (twice) and CorpseHit() seems wrong
+MoveGroupFromSectorToSectorButAvoidLastSector(): caller
+NPC.h: RUSSIAN quirk
+NewOKDestination(): boolean parameter with three (four?) values
+OBJECT_ARMED_BOMB: never gets tested
+PayMilitiaTrainingYesNoBoxCallback(): users
+PlayerGroupInMotion(): overkill
+ReadRLEColMapImage(), ReadRLERGBImage(): empty
+RemoveAllOnRoofsOfTypeRange(): O(n^2)
+RemoveAllShadows(): O(n^2)
+RemoveAllShadowsOfTypeRange(): O(n^2)
+RemoveAllTopmostsOfTypeRange(): O(n^2)
+RemoveAmmoGUI(), RemoveEquipGUI(), RemoveKeysGUI(), RemoveMoneyGUI(): empty, remove?
+RemoveItemGUI(): callers
+RenderFaceOverlay(): users
+RenderShopKeeperInterface(): MARK_DIRTY necessary?
+RenderTiles(): SetFontDestBuffer() + mprintf_buffer() strange
+SAIMOVECODE: use enum
+SLOW_ANIMATION: never set or cleared
+SOLDIER_QUOTE_SAID_DROWNING: never set
+STRUCTURE_MULTI: never set?
+STRUCTURE_TREE: never set
+STR_AR_MERC_RETREATING: string too long in German
+SaveLightEffectsToMapTempFile(): FileDelete() + FileOpen() == complicated
+SaveSmokeEffectsToMapTempFile(): FileDelete() + FileOpen() == complicated
+SaveWorld(), LoadWorld(), EvaluateWorld(): uiSoldierSize gets saved, but loaded and discarded
+SetClockResolutionPerSecond(): complicated
+SetExclusive24HourTimeValue(): complicated, use swprintf()
+SetInputFieldStringWithNumericStrictValue(): complicated
+SetSelection(): callers
+SoldierCanSeeCatchComing(): empty
+SoldierCarriesTwoHandedWeapon(): complicated
+StrategicMap[]: definition not used in file
+StrategicPythSpacesAway(): avoid sqrt()
+TrashMapTile(), MapOptimize(): investigate if useful
+TurnBasedHandleNPCAI(): lots of commented out stuff
+TurnSoldierIntoCorpse(): one caller
+TwoHandedItem(): complicated
+UseGun(): code duplication
+VIDEO_NO_CURSOR: MSYS_NO_CURSOR? strange
+ValidateSkillsList(), RemoveSkillFromSkillsList(): complicated
+WaitForSelectionWindowResponse(): fallthrough SDLK_ESCAPE -> SDLK_RETURN?
+WillShopKeeperRejectObjectsFromPlayer(): complicated
+bBuddy[5], bHated[5]: indices 3 and 4 unused
+fButtonsPresent: once TRUE it never changes anymore
+fPotentialForDebug: ?
+fUseDisabledAutoShade: some tests seems to be inverted
+gMercPlacement: memory leak?
+gOpenDoorList[], gClosedDoorList[]: users, code duplication
+gSaveBufferBasicPlacement, gSaveBufferDetailedPlacement: necessarily global?
+gTacticalStatus.ubEngagedInConvFromActionMercID, ENGAGED_IN_CONV: redundant?
+gTacticalStatus.ubSpottersCalledForBy: once != NOBODY never gets NOBODY again
+gTileTypeLogicalHeight[]: always 1 (memset)?
+gTileTypeLogicalHeight[]: definition not used in file
+gWhoThrewRock: useful?
+gbSkillTraitBonus[]: definition not used in file
+gfDrawPathPoints: always FALSE, debug
+gfItemDescHelpTextOffset: once TRUE never gets FALSE again
+gszCivGroupNames[]: move declaration
+gubCurrentNpcInSector[giHaveSelectedNPC]: complicated
+gubWorldRoomHidden: static?
+pMapErrorString[24]: probably never shown (function is only called when militia is in sector, which means it is a SAM site or town)
+pMapErrorString[4], pMapErrorString[17]: unused
+pMapInventoryErrorString[0]: probably unused
+pSoldier->pShades[16 ... 31]: unused?
+struct ETRLEData: reorder attributes
+ubMineType: unused?
+ubTravelRating: write-only
+{Head,Pants,Skin,Vest}Pal: buffer necessary? pointer instead?
+{Lock,Unlock}{Back,Frame,Mouse}Buffer(): SDL_LockSurface()?
+
+
+STRUCTS: unused attributes
+
+BULLET
+ubTilesPerUpdate: always 1
+
+EV_S_WEAPONHIT
+usWeaponIndex: determine from ubAttackerID
+sBreathLoss: read-only (0)
+usDirection: determine from ubAttackerID and usSoldierID
+sXPos: determine from usSoldierID
+sYPos: determine from usSoldierID
+sZPos: always 20
+sRange: always 1
+ubSpecial: always FIRE_WEAPON_NO_SPECIAL
+
+GROUP // TODO not finished
+ubOriginalSector: write-only, read to write-only
+ubCreatedSectorID: write-only
+
+MERCPROFILESTRUCT
+ubFaceIndex: overwritten after load from data file
+bArmourAttractiveness: overwritten after load from data file
+bMainGunAttractiveness: overwritten after load from data file
+fUseProfileInsertionInfo: overwritten after load from data file
+sGridNo: overwritten after load from data file
+bRace
+bNationality
+bAppearance
+bAppearanceCareLevel
+bRefinement
+bRefinementCareLevel
+bHatedNationality
+bHatedNationalityCareLevel
+bRacist
+sMedicalDepositAmount: overwritten after load from data file
+usOptionalGearCost: overwritten after load from data file
+
+OBJECTTYPE
+bKeyStatus
+ubWeight: only one reader
+fUsed
+
+SOLDIERCREATESTRUCT
+fStatic: strange
+fCopyProfileItemsOver: strange
+fUseGivenVehicle: strange
+fHasKeys: strange
+
+BUGS
+KillPreBattleInterface(): EnableDisAbleMapScreenOptionsButton(TRUE) maybe tries to enable non-existent buttons
+
+
+WORKLIST
+
+
+
+Build/Tactical/Soldier_Ani.cc,          AdjustToNextAnimationFrame              - a lot of hardcoded numbers in switch

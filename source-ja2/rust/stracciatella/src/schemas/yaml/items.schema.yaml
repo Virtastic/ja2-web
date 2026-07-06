@@ -1,0 +1,29 @@
+$schema: http://json-schema.org/schema#
+type: array
+title: Items
+description: |
+  **Limitations**: Some items are still referenced in source code, so they should not be changed.
+items:
+  allOf:
+    - title: Base Item
+      $ref: types/base-item.schema.yaml
+    - title: Item
+      description: |
+        An item defines item properties of an item available in the game.
+
+        Note that explosives, weapons and magazines are not part of this list, but have their own definitions.
+      type: object
+      properties:
+        usItemClass:
+          title: Item class
+          $ref: types/uint32.schema.yaml
+        ubClassIndex:
+          title: Item class index
+          $ref: types/uint8.schema.yaml
+        ubCursor:
+          title: Cursor
+          $ref: types/uint8.schema.yaml
+      required:
+      - usItemClass
+      - ubClassIndex
+      - ubCursor

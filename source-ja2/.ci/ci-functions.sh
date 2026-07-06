@@ -1,0 +1,86 @@
+## Setup related functions
+
+unix-install-rustup () {
+    curl --proto '=https' --tlsv1.2 -sSfL https://sh.rustup.rs | sh -s -- -y --default-toolchain=$(cat ./min-rust-version)
+    # Additional toolchains can be passed which are then installed
+    for var in "$@"
+    do
+        rustup target add $var
+    done
+}
+
+linux-install-sccache () {
+    local SCCACHE_VERSION="v0.5.4"
+    local SCCACHE_LINUX_PACKAGE="sccache-${SCCACHE_VERSION}-x86_64-unknown-linux-musl"
+
+    curl -sSfL "https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/${SCCACHE_LINUX_PACKAGE}.tar.gz" | sudo tar zx --strip-component=1 -C /usr/bin/
+}
+
+linux-install-via-apt-get () {
+    sudo apt-get -yq update
+    sudo apt-get -yq install $@
+}
+
+linux-install-google-cloud-sdk () {
+    export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+
+    curl https://sdk.cloud.google.com | bash
+    source $HOME/google-cloud-sdk/path.bash.inc
+}
+
+linux-install-appimage-build-tools () {
+    sudo curl -sSfL -o /usr/bin/linuxdeploy https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+    sudo chmod +x /usr/bin/linuxdeploy
+    sudo curl -sSfL -o /usr/bin/appimagelint https://github.com/TheAssassin/appimagelint/releases/download/continuous/appimagelint-x86_64.AppImage
+    sudo chmod +x /usr/bin/appimagelint
+}
+
+linux-install-via-android-sdkmanager () {
+    for var in "$@"
+    do
+        sdkmanager --install $var
+    done
+}
+
+linux-set-gcc-version () {
+    sudo update-alternatives --install /usr/bin/gcc gcc "/usr/bin/gcc-$1" "$1"
+    sudo update-alternatives --install /usr/bin/g++ g++ "/usr/bin/g++-$1" "$1"
+    sudo update-alternatives --set gcc "/usr/bin/gcc-$1"
+    sudo update-alternatives --set g++ "/usr/bin/g++-$1"
+}
+
+linux-setup-android-signing-keys () {
+    mkdir $HOME/.stracciatella-android-signing-keys
+
+    echo -n "$ANDROID_KEYSTORE_FILE" | base64 -d > $HOME/.stracciatella-android-signing-keys/keystore.jks
+}
+
+macOS-install-via-brew () {
+    brew install $@
+}
+
+macOS-install-via-brew-cask () {
+    brew install --cask google-cloud-sdk
+}
+
+windows-install-via-chocolatey () {
+    choco install $@
+}
+
+windows-install-rustup () {
+    # Difference to the Unix version: This only installs the one toolchain we pass in
+    curl -sSf -o rustup-init.exe https://win.rustup.rs/
+    ./rustup-init.exe -y --default-toolchain "$(cat ./min-rust-version)-$1" --default-host "$1"
+    export PATH="$PATH;$USERPROFILE\.cargo\bin"
+}
+
+windows-install-google-cloud-sdk () {
+    export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+    export CLOUDSDK_PYTHON="C:\\Python39\\python.exe"
+    local ARCHIVE_PATH="$HOMEPATH\google-cloud.zip"
+    local UNZIP_PATH="$USERPROFILE"
+    curl -sSf -o "$ARCHIVE_PATH" https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-366.0.0-windows-x86.zip
+    unzip -q "$ARCHIVE_PATH" -d $UNZIP_PATH
+    export PATH="$PATH;$UNZIP_PATH\google-cloud-sdk\bin"
+}
+

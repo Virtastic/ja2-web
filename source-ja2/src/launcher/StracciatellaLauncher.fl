@@ -1,0 +1,201 @@
+# data file for the Fltk User Interface Designer (fluid)
+version 1.0309
+header_name {.h}
+code_name {.cc}
+class StracciatellaLauncher {open
+} {
+  Function {StracciatellaLauncher()} {open
+  } {
+    Fl_Window stracciatellaLauncher {
+      label {JA2 Stracciatella Launcher} open
+      xywh {586 89 520 380} type Double resizable size_range {520 390 0 0} visible
+    } {
+      Fl_Tabs tabs {open
+        xywh {0 0 520 350} align 9 resizable
+      } {
+        Fl_Group {} {
+          label {@> Play  } selected
+          xywh {0 50 520 300} labelsize 16 labelcolor 24
+        } {
+          Fl_Button editorButton {
+            label {Start Map Editor}
+            xywh {160 150 200 25}
+          }
+          Fl_Button playButton {
+            label {Play Ja2 Stracciatella}
+            xywh {160 185 200 55}
+          }
+        }
+        Fl_Group {} {
+          label {@filenew Data }
+          xywh {0 50 520 300} labelcolor 24 hide
+        } {
+          Fl_Group {} {
+            xywh {10 60 500 50}
+          } {
+            Fl_Input gameDirectoryInput {
+              label {JA2 Game Directory:}
+              xywh {20 75 440 30} align 5 resizable
+            }
+            Fl_Button browseJa2DirectoryButton {
+              label {@fileopen}
+              tooltip {Choose JA2 game directory.} xywh {470 75 30 30}
+            }
+          }
+          Fl_Group {} {
+            xywh {10 110 500 50}
+          } {
+            Fl_Choice gameVersionInput {
+              label {Game Version:} open
+              xywh {20 130 440 30} down_box BORDER_BOX align 5 resizable
+            } {}
+            Fl_Button guessVersionButton {
+              label {@search}
+              tooltip {Guess Game Version} xywh {470 130 30 30}
+            }
+          }
+          Fl_Group {} {
+            label resizable
+            xywh {10 265 500 25} labeltype NO_LABEL align 17 resizable
+          } {}
+          Fl_Group {} {
+            xywh {10 170 500 50}
+          } {
+            Fl_Input saveGameDirectoryInput {
+              label {Save Game Directory:}
+              xywh {20 185 440 30} align 5 resizable
+            }
+            Fl_Button browseSaveGameDirectoryButton {
+              label {@fileopen}
+              tooltip {Choose JA2 game directory.} xywh {470 185 30 30}
+            }
+          }
+        }
+        Fl_Group {} {
+          label {@-> Mods } open
+          xywh {0 50 520 300} labelcolor 24 hide
+        } {
+          Fl_Group {} {
+            xywh {10 80 500 165}
+          } {
+            Fl_Browser enabledModsBrowser {
+              label {Enabled Mods:}
+              xywh {20 95 215 150} type Multi align 5
+            }
+            Fl_Button enableModsButton {
+              label {@<}
+              tooltip {Enable one or multiple mods.} xywh {245 95 30 30} deactivate
+            }
+            Fl_Button disableModsButton {
+              label {@>}
+              tooltip {Disable one or multiple mods.} xywh {245 135 30 30} deactivate
+            }
+            Fl_Button moveUpModsButton {
+              label {@2<}
+              tooltip {Move mod up in the list and decrease mod priority.} xywh {245 175 30 30} deactivate
+            }
+            Fl_Button moveDownModsButton {
+              label {@8<}
+              tooltip {Move mod down in the list and increase mod priority.} xywh {245 215 30 30} deactivate
+            }
+            Fl_Browser availableModsBrowser {
+              label {Disabled Mods:}
+              xywh {285 95 215 150} type Multi align 5
+            }
+          }
+          Fl_Text_Display modDetails {
+            xywh {20 255 480 80} color 55 hide
+          }
+          Fl_Box {} {
+            label {Mods listed later in the "Enabled Mods" list have higher priority.}
+            tooltip {Higher priority mods can overwrite changes from lower-priority ones or build on their features.} xywh {17 55 480 20} align 149
+          }
+        }
+        Fl_Group {} {
+          label {@menu Settings } open
+          xywh {0 50 520 300} labelcolor 24 hide
+        } {
+          Fl_Group {} {open
+            xywh {10 60 500 45}
+          } {
+            Fl_Output gameSettingsOutput {
+              label {Game Settings:}
+              xywh {20 75 480 30} align 5 resizable
+            }
+          }
+          Fl_Group {} {open
+            tooltip {Specify the resolution for tactical screen rendering. Texts and sprites become very small at higher internal resolutions. Note that menus and the strategic map screen are always rendered at 640x480.} xywh {10 115 500 52}
+          } {
+            Fl_Value_Input resolutionXInput {
+              label {Internal Resolution:}
+              xywh {20 130 75 30} align 5 minimum 640 maximum 0 value 640
+            }
+            Fl_Box {} {
+              label x
+              xywh {95 130 20 30}
+            }
+            Fl_Value_Input resolutionYInput {
+              xywh {115 130 75 30} labeltype NO_LABEL align 5 minimum 480 maximum 0 value 480
+            }
+            Fl_Menu_Button predefinedResolutionMenuButton {
+              label Predefined open
+              xywh {210 130 110 30}
+            } {}
+            Fl_Group {} {
+              label resizable open
+              xywh {415 115 30 30} labeltype NO_LABEL align 17 resizable
+            } {}
+            Fl_Box invalidResolutionLabel {
+              label {invalid!}
+              tooltip {the resolution must be at least 640x480, the original game resolution} xywh {340 130 160 30} labelfont 1 labelcolor 1 align 20
+            }
+          }
+          Fl_Group {} {open
+            tooltip {Choose a scaling mode to stretch the game video to fit the screen. Linear and Near-Perfect modes stretch the video to match any window sizes, but the image may look blurred. Pixel-Perfect can only scale up by integer (1x, 2x and so on) but gives sharp images.} xywh {10 170 500 55}
+          } {
+            Fl_Choice scalingModeChoice {
+              label {Scaling Mode:} open
+              xywh {20 185 480 30} down_box BORDER_BOX align 5 resizable
+            } {}
+          }
+          Fl_Group {} {open
+            xywh {10 220 500 65}
+          } {
+            Fl_Check_Button fullscreenCheckbox {
+              label Fullscreen
+              tooltip {Check to run in a borderless full-screen window} xywh {20 225 95 30} down_box DOWN_BOX
+            }
+            Fl_Check_Button playSoundsCheckbox {
+              label {Play Sounds}
+              xywh {20 255 109 30} down_box DOWN_BOX value 1
+            }
+          }
+        }
+        Fl_Group logsTab {
+          label {@square Logs} open
+          xywh {0 50 520 300} labelcolor 24 hide
+        } {
+          Fl_Text_Display logsDisplay {
+            label {You can view the logs of the latest JA2 Stracciatella execution here. If you want to report a bug, please include them in your bug report.}
+            xywh {20 95 480 250} box DOWN_BOX align 133 resizable
+          }
+        }
+      }
+      Fl_Group {} {open
+        xywh {0 350 465520 30}
+      } {
+        Fl_Output ja2JsonPathOutput {
+          tooltip {Path to stracciatella engine options} xywh {0 350 460 30} color 49 align 20 resizable
+        }
+        Fl_Button ja2JsonReloadBtn {
+          label {@reload}
+          tooltip {Reload stracciatella engine options} xywh {460 350 30 30} box THIN_UP_BOX labelcolor 8
+        }
+        Fl_Button ja2JsonSaveBtn {
+          label {@filesave}
+          tooltip {Save stracciatella engine options} xywh {490 350 30 30} box THIN_UP_BOX labelcolor 8
+        }
+      }
+    }
+  }
+}

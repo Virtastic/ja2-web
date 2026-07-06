@@ -1,0 +1,19 @@
+[workspace]
+members = [
+    "stracciatella",
+    "stracciatella_bin",
+    "stracciatella_c_api",
+]
+
+[profile.dev]
+rpath = true
+panic = "abort"
+
+[profile.release]
+rpath = true
+panic = "abort"
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+strip = false

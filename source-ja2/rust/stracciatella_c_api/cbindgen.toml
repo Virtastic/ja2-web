@@ -1,0 +1,60 @@
+autogen_warning = "/* DO NOT MODIFY MANUALLY! Changes will be discarded during build. */"
+include_version = true
+language = "C++"
+sys_includes = [
+    # std::unique_ptr
+    "memory",
+]
+
+# Top of stracciatella.h
+header = '''
+#pragma once
+
+#ifdef __ANDROID__
+#include <jni.h>
+#endif
+'''
+
+# Bottom of stracciatella.h
+trailer = '''
+/// Callable that deletes rust memory.
+struct RustDelete
+{
+	void operator()(char* ptr) const { CString_destroy(ptr); }
+	void operator()(EngineOptions* ptr) const { EngineOptions_destroy(ptr); }
+	void operator()(VFile* ptr) const { File_close(ptr); }
+	void operator()(TempDir* ptr) const { TempDir_destroy(ptr); }
+	void operator()(VecCString* ptr) const { VecCString_destroy(ptr); }
+	void operator()(VecU8* ptr) const { VecU8_destroy(ptr); }
+	void operator()(VecUSize* ptr) const { VecUSize_destroy(ptr); }
+	void operator()(Vfs* ptr) const { Vfs_destroy(ptr); }
+	void operator()(ModManager* ptr) const { ModManager_destroy(ptr); }
+	void operator()(Mod* ptr) const { Mod_destroy(ptr); }
+	void operator()(SchemaManager* ptr) const { SchemaManager_destroy(ptr); }
+	void operator()(SubProcess* ptr) const { SubProcess_destroy(ptr); }
+	void operator()(RJsonValue* ptr) const { RJsonValue_destroy(ptr); }
+	void operator()(RJsonArray* ptr) const { RJsonArray_destroy(ptr); }
+	void operator()(RJsonObject* ptr) const { RJsonObject_destroy(ptr); }
+};
+
+/// Alias to a std::unique_ptr that deletes with RustDelete.
+///
+/// By using this alias you are delegating memory management to the C++ compiler.
+template<typename T>
+using RustPointer = std::unique_ptr<T, RustDelete>;'''
+
+
+[parse]
+parse_deps = true
+include = ["stracciatella"]
+
+[export]
+exclude = [
+    "ENTRY_BYTES",
+    "HEADER_BYTES",
+    "UNIX_EPOCH_AS_FILETIME",
+]
+
+[defines]
+"target_os = android" = "__ANDROID__"
+"windows" = "_WIN32"

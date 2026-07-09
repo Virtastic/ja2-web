@@ -31,7 +31,12 @@ RUN --mount=type=cache,id=ja2-build-wasm,target=/build/build-wasm \
     --mount=type=cache,id=ja2-cargo-registry,target=/root/.cargo/registry \
     --mount=type=cache,id=ja2-cargo-git,target=/root/.cargo/git \
     --mount=type=cache,id=ja2-rust-target,target=/build/source-ja2/rust/target \
-    bash wasm-build/configure-ja2.sh \
+# source-ja2/assets/mods is gitignored (40 MB of community mods), so it's absent in a clean checkout
+# and cmake's desktop-only "copy assets next to the binary" post-build step errors on it. The WASM
+# build doesn't use that copy — game data is preloaded from fsroot@/game (with its own fsroot/mods)
+# — so an empty dir satisfies the copy without bloating the image.
+    mkdir -p source-ja2/assets/mods \
+ && bash wasm-build/configure-ja2.sh \
  && . wasm-build/env.sh && ninja -C build-wasm ja2 \
  && mkdir -p /build/play \
  && cp build-wasm/ja2.js build-wasm/ja2.wasm build-wasm/ja2.data /build/play/

@@ -24,10 +24,13 @@ COPY wasm-build /build/wasm-build
 # configure → compile+link (emits ja2.{js,wasm,data}) → stage into play/. Cache mounts keep re-runs
 # incremental: build-wasm (cmake+ninja objects), the cargo registry/git (crate downloads), and the
 # Rust target dir (build-std artifacts — the slow part; target/ is gitignored so masking is safe).
-RUN --mount=type=cache,target=/build/build-wasm \
-    --mount=type=cache,target=/root/.cargo/registry \
-    --mount=type=cache,target=/root/.cargo/git \
-    --mount=type=cache,target=/build/source-ja2/rust/target \
+# Distinct cache `id`s — BuildKit keys cache mounts by id (default = target path), and the sibling
+# morrowind image mounts the SAME target=/build/build-wasm on this shared runner. Without unique ids
+# the two projects' cmake caches collide ("source does not match ... used to generate cache").
+RUN --mount=type=cache,id=ja2-build-wasm,target=/build/build-wasm \
+    --mount=type=cache,id=ja2-cargo-registry,target=/root/.cargo/registry \
+    --mount=type=cache,id=ja2-cargo-git,target=/root/.cargo/git \
+    --mount=type=cache,id=ja2-rust-target,target=/build/source-ja2/rust/target \
     bash wasm-build/configure-ja2.sh \
  && . wasm-build/env.sh && ninja -C build-wasm ja2 \
  && mkdir -p /build/play \

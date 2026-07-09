@@ -35,31 +35,11 @@ resource "cloudflare_record" "ja2" {
   comment = "JA2-WASM on the shared OVH VPS (managed by terraform)"
 }
 
-# Edge caching: cache the immutable engine assets aggressively; let HTML respect origin no-cache.
-# The origin (container nginx) already sends correct Cache-Control; this is the edge optimization.
-# NOTE: ja2.{js,wasm,data} have stable names but change per build — purge the edge cache on redeploy
-# (the deploy workflow does this) or a stale engine is served.
-resource "cloudflare_ruleset" "cache" {
-  zone_id = data.cloudflare_zone.this.id
-  name    = "ja2-cache"
-  kind    = "zone"
-  phase   = "http_request_cache_settings"
-
-  rules {
-    ref         = "ja2_assets"
-    description = "Cache-everything for ja2.virtastic.app immutable assets"
-    expression  = "(http.host eq \"${var.hostname}\" and http.request.uri.path.extension in {\"wasm\" \"data\" \"js\" \"css\" \"png\" \"jpg\"})"
-    action      = "set_cache_settings"
-    enabled     = true
-    action_parameters {
-      cache = true
-      edge_ttl {
-        mode    = "override_origin"
-        default = 2592000 # 30 days at the edge for the big immutable blobs
-      }
-      browser_ttl {
-        mode = "respect_origin" # honor the origin's Cache-Control (immutable / no-cache)
-      }
-    }
-  }
-}
+# NO cache ruleset here — deliberately. A Cloudflare zone has exactly ONE entrypoint ruleset per
+# phase, and morrowind's terraform already owns the `http_request_cache_settings` ruleset for the
+# shared `virtastic.app` zone; a second ruleset from this state would clobber it. Edge caching for
+# ja2 therefore rides on the origin's Cache-Control: the container nginx sends
+# `public, max-age=31536000, immutable` for *.{wasm,data,js}, which Cloudflare honors by default.
+# If a cache-everything/override rule is ever wanted for ja2, ADD a rule to that shared ruleset in
+# the morrowind (CS-Web) terraform state — do not create a competing ruleset here.
+# (The deploy workflow still purges ja2.{js,wasm,data} on redeploy — stable names, changing bytes.)

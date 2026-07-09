@@ -946,30 +946,49 @@ static void SoundCallback(void* userdata, Uint8* stream, int len)
 			{
 				const INT vol_l   = Sound->uiFadeVolume * (127 - Sound->Pan) / MAXVOLUME;
 				const INT vol_r   = Sound->uiFadeVolume * (  0 + Sound->Pan) / MAXVOLUME;
-				UINT32    samples = want_samples;
-				const INT16* src;
-				auto rbResult = ma_pcm_rb_acquire_read(Sound->pRingBuffer, &samples, (void**)&src);
-				if (rbResult != MA_SUCCESS) {
-					SLOGE("Could not aquire read pointer for channel {}: {}", Sound - pSoundList, ma_result_description(rbResult));
-					continue;
-				}
-
-				for (UINT32 i = 0; i < samples; ++i)
+				// Drain the ring buffer across its internal wrap point(s) until this
+				// callback is filled or the buffer is genuinely empty.
+				// ma_pcm_rb_acquire_read only ever returns the *contiguous* run up to
+				// the wrap, so one read can be short even when the buffer is full. The
+				// old code read that single chunk and treated ANY short read as end of
+				// sound (CHANNEL_DEAD). Harmless for short SFX, but continuous MUSIC
+				// crosses ring wraps constantly, so the first wrap (and every transient
+				// main-thread underrun) killed the channel -> the track restarted from
+				// the top over and over: "super garbled" music. Fix: loop over the
+				// wrapped chunks and only end on a TRUE end-of-stream (ring empty AND
+				// decoder DoneServicing); a transient underrun leaves the tail silent
+				// this callback but keeps the channel playing for the service thread.
+				UINT32 filled    = 0;
+				bool   ringEmpty = false;
+				while (filled < want_samples)
 				{
-					gMixBuffer[2 * i + 0] += src[2 * i + 0] * vol_l >> 7;
-					gMixBuffer[2 * i + 1] += src[2 * i + 1] * vol_r >> 7;
+					UINT32 samples = want_samples - filled;
+					const INT16* src;
+					auto rbResult = ma_pcm_rb_acquire_read(Sound->pRingBuffer, &samples, (void**)&src);
+					if (rbResult != MA_SUCCESS) {
+						SLOGE("Could not aquire read pointer for channel {}: {}", Sound - pSoundList, ma_result_description(rbResult));
+						break;
+					}
+					if (samples == 0) { ringEmpty = true; break; }
+
+					for (UINT32 j = 0; j < samples; ++j)
+					{
+						gMixBuffer[2 * (filled + j) + 0] += src[2 * j + 0] * vol_l >> 7;
+						gMixBuffer[2 * (filled + j) + 1] += src[2 * j + 1] * vol_r >> 7;
+					}
+
+					rbResult = ma_pcm_rb_commit_read(Sound->pRingBuffer, samples);
+					if (rbResult != MA_SUCCESS && rbResult != MA_AT_END) {
+						SLOGE("Could not commit read pointer for channel {}: {}", Sound - pSoundList, ma_result_description(rbResult));
+						break;
+					}
+					filled += samples;
 				}
 
-				rbResult = ma_pcm_rb_commit_read(Sound->pRingBuffer, samples);
-				if (samples < want_samples || rbResult == MA_AT_END) {
+				if (ringEmpty && Sound->DoneServicing) {
 					Sound->State = CHANNEL_DEAD;
 				}
-
-				if (rbResult != MA_SUCCESS && rbResult != MA_AT_END) {
-					SLOGE("Could not commit read pointer for channel {}: {}", Sound - pSoundList, ma_result_description(rbResult));
-				} else {
-					ringBuffersNeedService |= DoesChannelRingBufferNeedService(Sound);
-				}
+				ringBuffersNeedService |= DoesChannelRingBufferNeedService(Sound);
 			}
 		}
 	}
@@ -1019,15 +1038,28 @@ static BOOLEAN SoundInitHardware(void)
 #ifdef __EMSCRIPTEN__
 		// The emscripten SDL2 audio driver forces the device to the Web Audio
 		// context's native sample rate (typically 48000), ignoring our 44100
-		// request. Read back the obtained spec and drive miniaudio's decoders
-		// and converters at the real device rate — otherwise every sound plays
-		// ~8.8% pitch/speed shifted (44100 frames pushed into a 48000 device).
+		// request. Open ONCE with obtained!=NULL only to *learn* that real rate,
+		// then close and reopen with obtained==NULL.
+		//
+		// Why the reopen matters: with obtained!=NULL, SDL_OpenAudio makes the
+		// callback responsible for producing the *device* format — which the
+		// emscripten backend forces to float32. But SoundCallback mixes and emits
+		// signed-16-bit (SOUND_FORMAT). Those int16 bytes were then handed to Web
+		// Audio as float32, i.e. reinterpreted, producing enormous garbage samples
+		// (~1e38): the "garbled, blaring" audio. With obtained==NULL, SDL keeps our
+		// S16 callback format and does the S16->F32 conversion internally. We carry
+		// the learned rate over so decoders/converters still run at the device rate
+		// (no ~8.8% pitch shift) and SDL only converts the format, not the rate.
 		SDL_AudioSpec obtainedAudioSpec;
 		if (SDL_OpenAudio(&gTargetAudioSpec, &obtainedAudioSpec) != 0) {
 			throw std::runtime_error(ST::format("SDL_OpenAudio returned error: {}", SDL_GetError()).c_str());
 		}
 		gTargetAudioSpec.freq     = obtainedAudioSpec.freq;
 		gTargetAudioSpec.channels = obtainedAudioSpec.channels;
+		SDL_CloseAudio();
+		if (SDL_OpenAudio(&gTargetAudioSpec, NULL) != 0) {
+			throw std::runtime_error(ST::format("SDL_OpenAudio (reopen) returned error: {}", SDL_GetError()).c_str());
+		}
 #else
 		if (SDL_OpenAudio(&gTargetAudioSpec, NULL) != 0) {
 			throw std::runtime_error(ST::format("SDL_OpenAudio returned error: {}", SDL_GetError()).c_str());

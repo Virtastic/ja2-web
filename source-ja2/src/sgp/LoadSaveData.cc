@@ -89,7 +89,12 @@ ST::string DataReader::readUTF16(size_t numChars, bool const isCorrectlyEncoded,
 		}
 	}
 
-	return ST::string(buf.c_str(), ST_AUTO_SIZE, validation);
+	// Reading game text must never crash on a malformed byte (e.g. the JA2 demo's
+	// older, differently-encoded prof.dat merc names contain lone UTF-16
+	// surrogates). Always substitute invalid sequences instead of throwing — for
+	// valid retail data there are no invalid sequences, so behaviour is identical.
+	(void)validation;
+	return ST::string(buf.c_str(), ST_AUTO_SIZE, ST::substitute_invalid);
 }
 
 ST::string DataReader::readUTF32(size_t numChars, ST::utf_validation_t validation)

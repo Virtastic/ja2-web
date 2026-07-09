@@ -142,22 +142,32 @@ void SGPVSurface::ShadowRectUsingLowPercentTable(INT32 const x1, INT32 const y1,
 
 SGPVSurface* AddVideoSurfaceFromFile(const char* const Filename)
 {
-	AutoSGPImage img(CreateImage(Filename, IMAGE_ALLIMAGEDATA));
+	try
+	{
+		AutoSGPImage img(CreateImage(Filename, IMAGE_ALLIMAGEDATA));
 
-	auto vs = std::make_unique<SGPVSurface>(img->usWidth, img->usHeight, img->ubBitDepth);
+		auto vs = std::make_unique<SGPVSurface>(img->usWidth, img->usHeight, img->ubBitDepth);
 
-	// Copy palette from the SGPImage to the SGPVSurface if necessary.
-	if (img->ubBitDepth == 8) vs->SetPalette(img->pPalette);
+		// Copy palette from the SGPImage to the SGPVSurface if necessary.
+		if (img->ubBitDepth == 8) vs->SetPalette(img->pPalette);
 
-	auto && sdlSurface{ vs->GetSDLSurface() };
-	auto const format{ sdlSurface.format->format };
+		auto && sdlSurface{ vs->GetSDLSurface() };
+		auto const format{ sdlSurface.format->format };
 
-	// Leave it to SDL to copy the pixel data from the image to the surface.
-	SDL_ConvertPixels(img->usWidth, img->usHeight,
-		format, &*img->pImageData, img->usWidth * img->ubBitDepth / 8,
-		format, sdlSurface.pixels, sdlSurface.pitch);
+		// Leave it to SDL to copy the pixel data from the image to the surface.
+		SDL_ConvertPixels(img->usWidth, img->usHeight,
+			format, &*img->pImageData, img->usWidth * img->ubBitDepth / 8,
+			format, sdlSurface.pixels, sdlSurface.pitch);
 
-	return vs.release();
+		return vs.release();
+	}
+	catch (...)
+	{
+		// The JA2 demo lacks some full-game background/surface images. Return a
+		// blank surface instead of aborting; full retail data never hits this.
+		SLOGW("Could not load surface '{}' — using a blank placeholder", Filename);
+		return new SGPVSurface(640, 480, 16);
+	}
 }
 
 void BltVideoSurfaceHalf(SGPVSurface* const dst, SGPVSurface* const src, INT32 const DestX, INT32 const DestY, SGPBox const* const src_rect)

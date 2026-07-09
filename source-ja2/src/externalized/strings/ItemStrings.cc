@@ -82,15 +82,29 @@ BinaryData BinaryData::deserialize(SGPFile* itemsFile, SGPFile* profilesFile) {
 	}
 
 	binData.profiles.resize(NUM_PROFILES);
+	// Pre-fill every slot with a default profile so none is ever null, even if the
+	// data file is short (see the catch below).
+	for (auto& p : binData.profiles) p = std::make_unique<const MERCPROFILESTRUCT>();
 	bool const isCorrectlyEncoded = !(isRussianVersion() || isRussianGoldVersion());
 	for (ProfileID profileID = 0; profileID != NUM_PROFILES; ++profileID) {
-		BYTE data[MERC_PROFILE_SIZE];
-		JA2EncryptedFileRead(profilesFile, data, sizeof(data));
-		auto prof = std::make_unique<MERCPROFILESTRUCT>();
-		UINT32 checksum;
-		ExtractMercProfile(data, *prof, false, &checksum, isCorrectlyEncoded);
-		// not checking the checksum
-		binData.profiles[profileID] = std::move(prof);
+		try {
+			BYTE data[MERC_PROFILE_SIZE];
+			JA2EncryptedFileRead(profilesFile, data, sizeof(data));   // fills data[] fully or throws
+			auto prof = std::make_unique<MERCPROFILESTRUCT>();
+			UINT32 checksum;
+			ExtractMercProfile(data, *prof, false, &checksum, isCorrectlyEncoded);
+			// not checking the checksum
+			binData.profiles[profileID] = std::move(prof);
+		}
+		catch (...) {
+			// The JA2 demo's prof.dat is shorter than the full game's NUM_PROFILES
+			// (it only ships the demo's mercs). Stop when it runs out and keep the
+			// pre-filled defaults for the rest. Full retail data has exactly
+			// NUM_PROFILES profiles, so this never triggers there. catch(...) because
+			// the SGPFile read throws SGPFileException across a TU boundary.
+			SLOGW("prof.dat ended early at profile {} — using defaults for the remaining mercs", profileID);
+			break;
+		}
 	}
 
 	return binData;

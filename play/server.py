@@ -21,9 +21,10 @@ def _load_dotenv(path):
 _load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 PORT = int(os.environ.get('PORT', '8795'))
-# When set (e.g. OPENMW_LAUNCHER=1 in env or play/.env), the bare site root serves the
-# data-chooser launcher instead of dropping straight into the game. Off = current behavior.
-LAUNCHER = os.environ.get('OPENMW_LAUNCHER', '').strip().lower() not in ('', '0', 'false', 'no')
+# The bare site root (/ and /index.html) serves the data-chooser launcher by default, so
+# visiting "/" lands on the chooser. Set OPENMW_LAUNCHER=0 (in env or play/.env) to disable
+# and drop straight into the game instead.
+LAUNCHER = os.environ.get('OPENMW_LAUNCHER', '1').strip().lower() not in ('0', 'false', 'no')
 
 class H(http.server.SimpleHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'

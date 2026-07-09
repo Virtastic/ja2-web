@@ -2,25 +2,89 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Jagged Alliance 2 — Stracciatella Web</title>
+<title>Jagged Alliance 2</title>
 <style>
   html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;font-family:system-ui,sans-serif}
   /* #wrap is a full-viewport clip box; layoutCanvas() absolutely-positions and
      sizes the canvas inside it per screen (native tactical vs. zoomed-to-fill UI). */
   #wrap{position:relative;width:100vw;height:100vh;overflow:hidden}
   canvas{outline:none;display:block;position:absolute;left:0;top:0;image-rendering:auto}
-  #status{position:fixed;left:0;right:0;top:40%;text-align:center;color:#c9a54a;font-size:18px;text-shadow:0 1px 3px #000}
-  #status .sub{color:#888;font-size:13px;margin-top:8px}
   #fps{position:fixed;right:8px;top:6px;color:#4a4;font:12px monospace;opacity:.7;display:none}
+  /* --- Themed loading overlay (matches launcher.html: Arulco black + jungle khaki
+     + a low blood-red ember). Covers the canvas during download/boot; fades out on
+     the engine's first frame. --- */
+  #status{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;
+    padding:24px;text-align:center;background:#0a0a09;color:#ece2c8;
+    font:16px/1.6 "Trebuchet MS","Gill Sans",-apple-system,"Segoe UI",Roboto,sans-serif;
+    transition:opacity .6s ease}
+  #status.hide{opacity:0;pointer-events:none}
+  #status::before{content:'';position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(150% 74% at 50% 134%, rgba(139,26,26,.34), rgba(198,90,46,.06) 34%, transparent 60%),
+      radial-gradient(90% 60% at 50% 136%, rgba(201,165,74,.12), transparent 56%);
+    animation:ldEmber 9s ease-in-out infinite}
+  @keyframes ldEmber{0%,100%{opacity:.82}50%{opacity:1}}
+  #status .ld-inner{position:relative;width:100%;max-width:460px}
+  #status .ld-glyph{width:54px;height:54px;margin:0 auto 24px;color:#c9a54a;animation:ldSpin 6s linear infinite}
+  #status .ld-glyph svg{width:100%;height:100%;display:block}
+  @keyframes ldSpin{to{transform:rotate(360deg)}}
+  #status.err .ld-glyph{animation:none;color:#e0836a}
+  #status .ld-title{margin:0 0 10px;font-family:"Hoefler Text","Copperplate","Baskerville",Georgia,serif;
+    font-weight:700;font-size:clamp(26px,5vw,40px);letter-spacing:.01em;color:#ece2c8;
+    text-shadow:0 1px 0 rgba(0,0,0,.6),0 0 34px rgba(201,165,74,.12)}
+  #status .ld-title .two{color:#c0392b;text-shadow:0 0 20px rgba(192,57,43,.4)}
+  #status .ld-status{margin:0 0 22px;font-size:11.5px;letter-spacing:.22em;text-transform:uppercase;
+    font-weight:700;color:#c7b070}
+  #status .ld-bar{position:relative;height:4px;border-radius:3px;overflow:hidden;background:rgba(138,122,78,.28)}
+  #status .ld-fill{height:100%;width:0;border-radius:3px;
+    background:linear-gradient(90deg,#8a7a4e,#c9a54a,#eccf7e);transition:width .3s ease}
+  #status.indet .ld-fill{width:34%;animation:ldSlide 1.25s ease-in-out infinite}
+  @keyframes ldSlide{0%{transform:translateX(-110%)}100%{transform:translateX(330%)}}
+  #status .sub{margin-top:13px;min-height:16px;font:12px/1.4 ui-monospace,Menlo,monospace;color:#786c58}
+  #status.err .ld-status{color:#e0836a}
+  @media (prefers-reduced-motion:reduce){
+    #status::before,#status .ld-glyph{animation:none}
+    #status.indet .ld-fill{animation:none;width:100%}
+  }
 </style>
 </head>
 <body>
 <div id="wrap"><canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas></div>
-<div id="status">Loading Jagged Alliance 2…<div class="sub" id="substatus"></div></div>
+<div id="status" class="indet">
+  <div class="ld-inner">
+    <div class="ld-glyph" aria-hidden="true">
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <circle cx="24" cy="24" r="15"/>
+        <line x1="24" y1="4" x2="24" y2="13"/><line x1="24" y1="35" x2="24" y2="44"/>
+        <line x1="4" y1="24" x2="13" y2="24"/><line x1="35" y1="24" x2="44" y2="24"/>
+        <circle cx="24" cy="24" r="2.4" fill="currentColor" stroke="none"/>
+      </svg>
+    </div>
+    <div class="ld-title">Jagged Alliance <span class="two">2</span></div>
+    <div class="ld-status" id="ld-status">Deploying to Arulco…</div>
+    <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+    <div class="sub" id="substatus"></div>
+  </div>
+</div>
 <div id="fps"></div>
 <script>
 var statusEl = document.getElementById('status');
 var subEl = document.getElementById('substatus');
+var ldStatusEl = document.getElementById('ld-status');
+var ldFillEl = document.getElementById('ld-fill');
+// Drive the themed loading overlay from an emscripten status string such as
+// "Downloading data... (1234/56789)" — fill the progress bar and show MB.
+function setLoading(t){
+  if (!t) return;
+  var m = t.match(/\((\d+)\/(\d+)\)/);
+  if (m && +m[2] > 0){
+    statusEl.classList.remove('indet');
+    ldFillEl.style.width = Math.max(2, Math.min(100, (+m[1] / +m[2]) * 100)) + '%';
+    if (ldStatusEl) ldStatusEl.textContent = 'Loading game data…';
+    subEl.textContent = ((+m[1] / 1048576) | 0) + ' / ' + ((+m[2] / 1048576) | 0) + ' MB';
+  } else {
+    subEl.textContent = t;
+  }
+}
 
 // Per-screen canvas presentation. The engine runs at ONE global internal
 // resolution (the browser size, see computeStartResolution) — but each screen is
@@ -135,6 +199,20 @@ function computeStartResolution(){
 // (what media players use) routes game audio through the browser's normal
 // high-quality resampler regardless of the hardware device rate. SoundMan reads
 // back this context's sample rate, so decoders target it correctly.
+// A mono (1-channel) output device — e.g. a Bluetooth headset in hands-free/HFP
+// mode — leaves the AudioContext destination in an INVALID state: channelCount=2
+// (default stereo) with channelCountMode 'explicit' but maxChannelCount=1. The
+// engine's stereo output is then forced through a 1-channel device, which comes
+// out garbled/clipped. Clamp the destination to the device's real channel count
+// so the 2→1 downmix is well-defined and clean. No-op on a normal stereo device.
+function clampDestChannels(ctx){
+  try {
+    var d = ctx && ctx.destination;
+    if (d && d.maxChannelCount >= 1 && d.channelCount > d.maxChannelCount) {
+      d.channelCount = d.maxChannelCount;
+    }
+  } catch(e){}
+}
 function presetAudioContext(){
   try {
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -142,6 +220,7 @@ function presetAudioContext(){
     var ctx;
     try { ctx = new AC({ latencyHint: 'playback', sampleRate: 48000 }); }
     catch(e){ ctx = new AC({ latencyHint: 'playback' }); }   // some devices reject a forced rate
+    clampDestChannels(ctx);
     Module.SDL2 = Module.SDL2 || {};
     Module.SDL2.audioContext = ctx;
     console.log('ja2 audio ctx:', ctx.sampleRate, 'Hz, maxCh',
@@ -149,12 +228,77 @@ function presetAudioContext(){
   } catch(e){ console.warn('audio ctx preset failed:', e); }
 }
 
+// ?src=local: copy the player's OWN Jagged Alliance 2 "Data" folder (picked in
+// launcher.html and remembered as a FileSystemDirectoryHandle) into MEMFS at
+// /owndata/data. The engine's VFS then reads the SLF archives from there
+// (game_dir=/owndata) — no bundled data package is loaded in this mode. Returns
+// the launcher's stored meta ({resversion, wildfire}); throws a user-facing
+// message on failure so the caller can bounce back to the chooser.
+async function mountOwnDataFolder(){
+  function ljOpen(){ return new Promise(function(res,rej){
+    var r = indexedDB.open('ja2-launcher',1);
+    r.onupgradeneeded=function(){ if(!r.result.objectStoreNames.contains('handles')) r.result.createObjectStore('handles'); };
+    r.onsuccess=function(){ res(r.result); }; r.onerror=function(){ rej(r.error); };
+  }); }
+  function ljGet(key){ return ljOpen().then(function(db){ return new Promise(function(res,rej){
+    var t=db.transaction('handles','readonly').objectStore('handles').get(key);
+    t.onsuccess=function(){ res(t.result); }; t.onerror=function(){ rej(t.error); };
+  }); }); }
+
+  var dir = await ljGet('ja2data');
+  var meta = (await ljGet('ja2meta')) || {};
+  if (!dir) throw new Error('No folder was remembered');
+  var perm='prompt';
+  try { perm = await dir.queryPermission({mode:'read'}); } catch(e){}
+  if (perm !== 'granted'){
+    try { perm = await dir.requestPermission({mode:'read'}); } catch(e){}
+    if (perm !== 'granted') throw new Error('Read permission is not granted');
+  }
+
+  // Users may pick the install root or the Data folder itself — descend if present.
+  var dataDir = dir;
+  for await (const ent of dir.entries())
+    if (ent[1].kind==='directory' && ent[0].toLowerCase()==='data'){ dataDir = ent[1]; break; }
+
+  addRunDependency('ja2-owndata');
+  try {
+    try { FS.mkdirTree('/owndata/data'); } catch(e){}
+    var files=0, bytes=0, slf=0;
+    async function walk(handle, prefix){
+      var entries=[];
+      for await (const ent of handle.entries()) entries.push(ent);
+      for (const ent of entries){                 // subdirs first (TILECACHE/, stsounds/ …)
+        if (ent[1].kind==='directory'){
+          var rd = prefix ? prefix+'/'+ent[0] : ent[0];
+          try { FS.mkdirTree('/owndata/data/'+rd); } catch(e){}
+          await walk(ent[1], rd);
+        }
+      }
+      for (const ent of entries){
+        if (ent[1].kind!=='file') continue;
+        var rel = prefix ? prefix+'/'+ent[0] : ent[0];
+        var file = await ent[1].getFile();
+        var buf = new Uint8Array(await file.arrayBuffer());
+        FS.writeFile('/owndata/data/'+rel, buf);
+        files++; bytes += buf.length; if (/\.slf$/i.test(ent[0])) slf++;
+        if (subEl) subEl.textContent = 'Loading your JA2 data… '+files+' files, '+((bytes/1048576)|0)+' MB';
+      }
+    }
+    await walk(dataDir, '');
+    if (slf===0) throw new Error('No .slf data archives were found in that folder');
+    console.log('own-data: copied '+files+' files ('+((bytes/1048576)|0)+' MB, '+slf+' SLF) → /owndata/data');
+  } finally {
+    removeRunDependency('ja2-owndata');
+  }
+  return meta;
+}
+
 var Module = {
   canvas: document.getElementById('canvas'),
   arguments: /[?&]editor\b/.test(location.search) ? ['-editor'] : [],
   print: function(t){ console.log(t); },
   printErr: function(t){ console.warn(t); },
-  setStatus: function(t){ if (t) subEl.textContent = t; },
+  setStatus: function(t){ setLoading(t); },
   preRun: [presetAudioContext, function(){
     // Persistent home: config (~/.ja2), ja2.json, savegames all live here.
     ENV.HOME = '/userdata';
@@ -165,25 +309,46 @@ var Module = {
     FS.syncfs(true, function(err){
       if (err) console.warn('IDBFS restore failed', err);
       try { FS.mkdir('/userdata/.ja2'); } catch(e){}
-      // Merge config: keep any launcher-written settings, point at the bundled
-      // data, and set the starting resolution to match the browser window.
-      var cfg = {};
-      try {
-        var txt = new TextDecoder().decode(FS.readFile('/userdata/.ja2/ja2.json'))
-                    .replace(/^\s*\/\/.*$/gm, '');           // ja2.json allows // comments
-        cfg = JSON.parse(txt);
-      } catch(e){}
-      if (!cfg.game_dir || cfg.game_dir.indexOf('/some/place') === 0) cfg.game_dir = '/game/gamedata';
-      cfg.res = computeStartResolution();
-      // JA2's default "PERFECT" (pixel-perfect) scaling hard-errors when the
-      // game resolution exceeds the desktop/display size — which our auto-res
-      // routinely does. LINEAR scaling has no such limit and scales any size
-      // cleanly, so it's the right default in the browser. (Launcher can still
-      // override to NEAR_PERFECT/PERFECT explicitly.)
-      if (!cfg.scaling) cfg.scaling = 'LINEAR';
-      FS.writeFile('/userdata/.ja2/ja2.json', JSON.stringify(cfg, null, 2));
-      console.log('ja2 start resolution:', cfg.res);
-      removeRunDependency('idbfs-restore');
+      (async function(){
+        // Merge any launcher-written config.
+        var cfg = {};
+        try {
+          var txt = new TextDecoder().decode(FS.readFile('/userdata/.ja2/ja2.json'))
+                      .replace(/^\s*\/\/.*$/gm, '');           // ja2.json allows // comments
+          cfg = JSON.parse(txt);
+        } catch(e){}
+
+        // Data source: ?src=local mounts the player's own JA2 folder; otherwise
+        // the bundled sample package supplies /game/gamedata.
+        var srcLocal = /[?&]src=local\b/.test(location.search);
+        if (srcLocal){
+          try {
+            var meta = await mountOwnDataFolder();
+            cfg.game_dir = '/owndata';
+            if (meta && meta.resversion) cfg.resversion = meta.resversion;
+          } catch(e){
+            console.error('own-data mount failed', e);
+            statusEl.classList.remove('hide', 'indet');
+            statusEl.classList.add('err');
+            if (ldStatusEl) ldStatusEl.textContent = 'Could not read your JA2 folder';
+            subEl.textContent = (e && e.message || e) + ' — returning to the chooser…';
+            setTimeout(function(){ location.href = 'launcher.html'; }, 2600);
+            return;   // leave idbfs-restore held: never half-boot with no data
+          }
+        } else if (!cfg.game_dir || cfg.game_dir === '/owndata' || cfg.game_dir.indexOf('/some/place') === 0){
+          // bundled sample (default). Reset a stale /owndata from a prior local run.
+          cfg.game_dir = '/game/gamedata';
+        }
+
+        cfg.res = computeStartResolution();
+        // JA2's default "PERFECT" (pixel-perfect) scaling hard-errors when the
+        // game resolution exceeds the desktop/display size — which our auto-res
+        // routinely does. LINEAR scales any size cleanly, so it's the browser default.
+        if (!cfg.scaling) cfg.scaling = 'LINEAR';
+        FS.writeFile('/userdata/.ja2/ja2.json', JSON.stringify(cfg, null, 2));
+        console.log('ja2 start:', cfg.game_dir, cfg.res, cfg.resversion || 'ENGLISH');
+        removeRunDependency('idbfs-restore');
+      })();
     });
   }],
   onRuntimeInitialized: function(){},
@@ -195,14 +360,15 @@ var Module = {
   // loop there.
   onExit: function(){ restartGame('quit'); },
   onAbort: function(what){
-    statusEl.style.display = '';
-    var missingData = false;
-    try { FS.stat('/game/gamedata/data'); } catch(e){ missingData = true; }
-    if (missingData) {
-      statusEl.innerHTML = 'Game data not found.<div class="sub">The original JA2 <b>Data/*.slf</b> files must be bundled: copy them to fsroot/gamedata/data/ and rebuild, then reload.</div>';
-    } else {
-      statusEl.textContent = 'Aborted: ' + what;
-    }
+    statusEl.classList.remove('hide', 'indet');
+    statusEl.classList.add('err');
+    var haveData = false;
+    try { FS.stat('/game/gamedata/data'); haveData = true; } catch(e){}
+    try { FS.stat('/owndata/data'); haveData = true; } catch(e){}
+    if (ldStatusEl) ldStatusEl.textContent = haveData ? 'Aborted' : 'Game data not found';
+    subEl.textContent = haveData
+      ? String(what || 'an unexpected error occurred')
+      : 'The JA2 Data/*.slf archives could not be loaded.';
   }
 };
 
@@ -247,7 +413,7 @@ addEventListener('pagehide', function(){ window.__ja2Sync(); });
 function resumeAudio(){
   try {
     var ctx = Module.SDL2 && Module.SDL2.audioContext;
-    if (ctx && ctx.state === 'suspended') ctx.resume();
+    if (ctx){ clampDestChannels(ctx); if (ctx.state === 'suspended') ctx.resume(); }
   } catch(e){}
 }
 addEventListener('click', resumeAudio);
@@ -261,7 +427,7 @@ window.__pumpErrors = 0;
 function startPump(){
   if (pumpStarted) return;
   pumpStarted = true;
-  statusEl.style.display = 'none';
+  statusEl.classList.add('hide');   // fade the themed loading overlay out
   var mc = new MessageChannel();
   var scheduled = false;
   var frames = 0, lastT = performance.now();
@@ -308,9 +474,18 @@ function startPump(){
 // only then is it safe to pump. If main() bails early we show its error.
 Module.onGameReady = function(){ window.__ja2Booted = true; startPump(); layoutCanvas(); };
 </script>
-<!-- Standalone game-data package (~860MB): hooks Module.addRunDependency so
-     ja2.js waits until the SLF archives are mounted at /game/gamedata. -->
-<script src="ja2-gamedata.js"></script>
-<script src="ja2.js"></script>
+<script>
+// Data source depends on how the chooser (launcher.html) sent us here:
+//  • ?src=local — the player's own JA2 "Data" folder is copied into MEMFS in
+//    preRun; no bundled package is loaded (that's the whole point — no download).
+//  • default — load the bundled sample data package. It hooks
+//    Module.addRunDependency, so it MUST run before ja2.js.
+(function(){
+  function load(src, cb){ var s=document.createElement('script'); s.src=src; if(cb) s.onload=cb; document.body.appendChild(s); }
+  var s = location.search;
+  if (/[?&]src=local\b/.test(s)) load('ja2.js');                 // own folder (mounted in preRun)
+  else load('ja2-gamedata.js', function(){ load('ja2.js'); });   // default → full bundled sample
+})();
+</script>
 </body>
 </html>

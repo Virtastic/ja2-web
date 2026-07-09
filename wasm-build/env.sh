@@ -15,8 +15,14 @@ export RUSTUP_TOOLCHAIN=nightly
 export RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory,+mutable-globals"
 export EMCC_CFLAGS="-pthread -fexceptions"
 export JA2_CARGO_ARGS="-Zbuild-std=std,panic_abort"
-# Common flags: JS exceptions (rustc emscripten ABI), pthreads
-export JA2_COMMON_FLAGS="-pthread -fexceptions -O2"
+# Common flags: JS exceptions (rustc emscripten ABI), pthreads.
+# ST_DEFAULT_VALIDATION=substitute_invalid: string_theory's default is
+# check_validity, which THROWS ST::unicode_error (→ hard abort) on any string with
+# an invalid UTF sequence. Odd/older data (e.g. the JA2 demo's mis-encoded strings)
+# then crashes the engine at content load. substitute_invalid replaces the bad
+# code unit instead of throwing — strictly more permissive, never worse for valid
+# data — which is the right default for a browser port fed arbitrary game folders.
+export JA2_COMMON_FLAGS="-pthread -fexceptions -O2 -DST_DEFAULT_VALIDATION=ST::substitute_invalid"
 # Canonical link flags (CS-Web-derived). NO -flto. Game data preloaded from fsroot/.
 # Game data (fsroot/gamedata, ~900MB of *.slf) is packaged SEPARATELY at runtime
 # (wasm-build/package-data.sh) so relinks stay fast and the link only bakes the

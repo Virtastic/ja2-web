@@ -1073,7 +1073,11 @@ ItemRange DefaultContentManager::getItems() const
 
 const ItemModel* DefaultContentManager::getItem(uint16_t itemIndex) const
 {
-	return m_items.at(itemIndex);
+	// Tolerate out-of-range item indices instead of throwing: the JA2 demo's older
+	// prof.dat references merc inventory items by a numbering that doesn't match the
+	// full item table, so some indices land past the end. Fall back to item 0
+	// (NOTHING). Full retail data always uses valid indices, so this never triggers.
+	return m_items.at(itemIndex < m_items.size() ? itemIndex : 0);
 }
 
 const ItemModel* DefaultContentManager::getItem(uint16_t itemIndex, ItemSystem::nothrow_t const&) const noexcept
@@ -1400,8 +1404,12 @@ void DefaultContentManager::loadAllScriptRecords()
 		auto jsonMeanwhileId = meanwhile.GetUInt("id");
 		for (auto& subElement : meanwhile.GetValue("chars").toVec()) {
 			auto charToFileInfo = subElement.toObject();
+			// The JA2 demo ships only a subset of NPC script files; skip any the
+			// demo doesn't include (full retail data has them all).
+			ST::string npcResName = NPCDATADIR "/" + charToFileInfo.GetString("fileName");
+			if (!doesGameResExists(npcResName)) continue;
 			auto jsonProfileId = (this->getMercProfileInfoByName(charToFileInfo.GetString("name")))->profileID;
-			std::unique_ptr<SGPFile> file{ openGameResForReading(NPCDATADIR "/" + charToFileInfo.GetString("fileName")) };
+			std::unique_ptr<SGPFile> file{ openGameResForReading(npcResName) };
 			m_scriptRecordsMeanwhiles.insert_or_assign(
 				{ jsonMeanwhileId, jsonProfileId },
 				ExtractNPCQuoteInfoArrayFromFile(file.get()));
@@ -1409,8 +1417,10 @@ void DefaultContentManager::loadAllScriptRecords()
 	}
 
 	auto scriptsControllingPCsFileName = ctrl.GetString("fileNameForScriptControlledPCs");
-	std::unique_ptr<SGPFile> file{ openGameResForReading(NPCDATADIR "/" + scriptsControllingPCsFileName) };
-	m_scriptRecordsRecruited = ExtractNPCQuoteInfoArrayFromFile(file.get());
+	if (doesGameResExists(NPCDATADIR "/" + scriptsControllingPCsFileName)) {
+		std::unique_ptr<SGPFile> file{ openGameResForReading(NPCDATADIR "/" + scriptsControllingPCsFileName) };
+		m_scriptRecordsRecruited = ExtractNPCQuoteInfoArrayFromFile(file.get());
+	}
 
 	bool jsonIsOnStraccLayer = (openGameResForReadingOnAllLayers("script-records-NPCs.json").size() == 1);
 	auto json = readJsonDataFileWithSchema("script-records-NPCs.json");

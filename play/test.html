@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Jagged Alliance 2 — Stracciatella Web</title>
+<title>Jagged Alliance 2</title>
 <style>
   html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;font-family:system-ui,sans-serif}
   /* #wrap is a full-viewport clip box; layoutCanvas() absolutely-positions and
@@ -138,6 +138,14 @@ function computeStartResolution(){
 // (what media players use) routes game audio through the browser's normal
 // high-quality resampler regardless of the hardware device rate. SoundMan reads
 // back this context's sample rate, so decoders target it correctly.
+function clampDestChannels(ctx){
+  try {
+    var d = ctx && ctx.destination;
+    if (d && d.maxChannelCount >= 1 && d.channelCount > d.maxChannelCount) {
+      d.channelCount = d.maxChannelCount;   // mono device: fixes garbled stereo->mono downmix
+    }
+  } catch(e){}
+}
 function presetAudioContext(){
   try {
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -145,6 +153,7 @@ function presetAudioContext(){
     var ctx;
     try { ctx = new AC({ latencyHint: 'playback', sampleRate: 48000 }); }
     catch(e){ ctx = new AC({ latencyHint: 'playback' }); }   // some devices reject a forced rate
+    clampDestChannels(ctx);
     Module.SDL2 = Module.SDL2 || {};
     Module.SDL2.audioContext = ctx;
     console.log('ja2 audio ctx:', ctx.sampleRate, 'Hz, maxCh',
@@ -250,7 +259,7 @@ addEventListener('pagehide', function(){ window.__ja2Sync(); });
 function resumeAudio(){
   try {
     var ctx = Module.SDL2 && Module.SDL2.audioContext;
-    if (ctx && ctx.state === 'suspended') ctx.resume();
+    if (ctx){ clampDestChannels(ctx); if (ctx.state === 'suspended') ctx.resume(); }
   } catch(e){}
 }
 addEventListener('click', resumeAudio);

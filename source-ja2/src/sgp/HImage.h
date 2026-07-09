@@ -99,6 +99,11 @@ struct SGPImage
 
 SGPImage* CreateImage(const ST::string& ImageFile, UINT16 fContents);
 
+/* A screen-sized (640x480) fully-transparent placeholder image, used in place of
+ * an image file that could not be loaded (e.g. the JA2 demo's missing graphics)
+ * so the game keeps running instead of aborting. */
+SGPImage* CreatePlaceholderImage();
+
 // UTILITY FUNCTIONS
 
 // Used to create a 16BPP Palette from an 8 bit palette, found in himage.c

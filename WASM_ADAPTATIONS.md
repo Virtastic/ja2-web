@@ -54,12 +54,29 @@ patterns proven in CS-Web (OpenMW) and FreeCAD-Web.
 `FS.syncfs` runs every 15 s, on `visibilitychange`/`pagehide`. `EXTRA_DATA_DIR=/game`
 is baked into the Rust build as the assets-dir fallback (no `/proc/self/exe` on wasm).
 
-## Launcher
+## Launcher / data chooser
 
-`play/launcher.html` is a faithful HTML recreation of the FLTK launcher
-(Play / Data / Mods / Settings / Logs tabs, same controls and `ja2.json`
-fields). It writes the same `/userdata/.ja2/ja2.json` by talking to the
-IDBFS IndexedDB store directly (db `/userdata`, store `FILE_DATA`, v21), so
+`play/launcher.html` is a JA2-themed **data chooser** (modeled on OpenMW-web's):
+two cards — **Play the demo** (→ `index.html?demo`, bundled sample) and **Bring
+your own JA2** (a folder picker). The own-data flow uses the File System Access
+API: `showDirectoryPicker()` → validate `Data/*.slf` + sniff Wildfire / 1.13 →
+store the `FileSystemDirectoryHandle` in IndexedDB (db `ja2-launcher`, store
+`handles`) → `index.html?src=local`. A "remembered install" fast-path re-uses the
+saved handle. `play/index.html` reads that handle in `preRun`
+(`mountOwnDataFolder`) and **copies** the picked `Data/` tree into MEMFS at
+`/owndata/data` (no big download), then writes `game_dir=/owndata` +
+`resversion` into `ja2.json`. The bundled/demo path instead dynamically loads the
+`ja2-gamedata.js` data package (skipped entirely for `?src=local`). Loading UI is
+a themed full-screen overlay matching the chooser (crosshair glyph, progress bar
+driven by `Module.setStatus` download %, fades out on `onGameReady`).
+
+Note on Wildfire: the engine's `VanillaVersion` enum has only the 9 *language*
+editions (no `WILDFIRE`), so Wildfire is detected + surfaced but runs as plain
+data (partial). The old faithful FLTK-style settings launcher is retained as
+`play/settings.html` (unlinked from the chooser).
+
+An earlier faithful FLTK-recreation launcher wrote the same `/userdata/.ja2/ja2.json`
+via the IDBFS IndexedDB store directly (db `/userdata`, store `FILE_DATA`, v21), so
 launcher and game share configuration with no wasm needed on the launcher page.
 A literal FLTK-on-wasm build was spiked (`wasm-build/fltk-release-1.4.3`,
 emcmake configure succeeds, widget sources compile): FLTK 1.4.3 has **no wasm

@@ -243,12 +243,19 @@ catch (std::exception const& e)
 		else
 		{
 			what = "savegame";
+#ifndef __EMSCRIPTEN__
 			auto saveName = GetErrorSaveName();
 			if (SaveGame(saveName, "error savegame"))
 			{
 				success = ST::format("succeeded ({}.sav)", saveName);
 				attach = " Do not forget to attach the savegame.";
 			}
+#else
+			// In the browser, skip the emergency save — writing it can itself crash
+			// (e.g. on the JA2 demo's reduced data) and mask the real error. Let the
+			// original exception message propagate instead.
+			success = "skipped";
+#endif
 		}
 	}
 	ST::string msg = ST::format(

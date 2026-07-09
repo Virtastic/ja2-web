@@ -87,7 +87,13 @@ ETRLEObject const& SGPVObject::SubregionProperties(size_t const idx) const
 {
 	if (idx >= SubregionCount())
 	{
-		throw std::logic_error(ST::format("Tried to access invalid subregion in video object: Maximum is {}, got {}", SubregionCount()-1, idx).c_str());
+		// Tolerate out-of-range sub-region access instead of aborting: the JA2
+		// demo's older graphics sometimes have fewer sub-images than the full-game
+		// code expects, and missing-image placeholders have only one. Fall back to
+		// the first sub-region. Full retail data always uses valid indices, so this
+		// path is never taken there.
+		static const ETRLEObject empty{};
+		return SubregionCount() > 0 ? etrle_object_[0] : empty;
 	}
 	return etrle_object_[idx];
 }
@@ -223,10 +229,30 @@ SGPVObject* AddVideoObjectFromHImage(SGPImage* const img)
 	return new SGPVObject(img);
 }
 
+// A blank 1x1 placeholder video object, used when an image file is missing. The
+// JA2 demo ships fewer interface graphics than the full game; the missing ones are
+// for features the demo lacks, so they load into this placeholder at startup but
+// are never actually blitted. Full retail data has every file, so a placeholder is
+// never created there — behaviour is unchanged for the real game.
+static SGPVObject* CreatePlaceholderVObject()
+{
+	return new SGPVObject(CreatePlaceholderImage());  // shared 640x480 transparent placeholder
+}
+
 SGPVObject* AddVideoObjectFromFile(const ST::string& ImageFile)
 {
-	AutoSGPImage hImage(CreateImage(ImageFile, IMAGE_ALLIMAGEDATA));
-	return AddVideoObjectFromHImage(hImage.get());
+	try
+	{
+		AutoSGPImage hImage(CreateImage(ImageFile, IMAGE_ALLIMAGEDATA));
+		return AddVideoObjectFromHImage(hImage.get());
+	}
+	catch (...)
+	{
+		// Don't abort the whole game because one image is missing/unreadable — this
+		// is how the demo's smaller graphics set is tolerated. Use a blank placeholder.
+		SLOGW("Could not load image '{}' — using a blank placeholder", ImageFile);
+		return CreatePlaceholderVObject();
+	}
 }
 
 

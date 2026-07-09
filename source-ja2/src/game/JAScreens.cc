@@ -18,6 +18,8 @@
 #include "JAScreens.h"
 #include "Sound_Control.h"
 #include "MainMenuScreen.h"
+#include "ContentManager.h"
+#include "GameInstance.h"
 #include "Game_Init.h"
 #include "Init.h"
 #include "Cursor_Control.h"
@@ -123,7 +125,11 @@ ScreenID InitScreenHandle(void)
 	{
 		if(isEnglishVersion() || isChineseVersion())
 		{
-			if( gfDoneWithSplashScreen )
+			// Skip the intro/splash sequence when its video is absent. The JA2 demo
+			// ships without intro/splashscreen.smk and without the splash graphics
+			// the sequence renders, so playing it crashes. Full retail data has them
+			// all, so the intro plays as normal there.
+			if( gfDoneWithSplashScreen || !GCM->doesGameResExists(INTRODIR "/splashscreen.smk") )
 			{
 				ubCurrentScreen = 0;
 			}

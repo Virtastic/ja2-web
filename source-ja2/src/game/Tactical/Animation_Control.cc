@@ -2400,8 +2400,12 @@ void InitAnimationSurfacesPerBodytype( )
 
 void LoadAnimationStateInstructions()
 {
+	// The JA2 demo's ja2bin.dat is smaller than the full game's animation table.
+	// Zero-fill first, then read only what's present (readAtMost doesn't throw on a
+	// short file); the unread tail stays zero. Full retail data fills it completely.
+	std::memset(gusAnimInst, 0, sizeof(gusAnimInst));
 	AutoSGPFile hFile(GCM->openGameResForReading(ANIMFILENAME));
-	hFile->read(gusAnimInst, sizeof(gusAnimInst));
+	hFile->readAtMost(gusAnimInst, sizeof(gusAnimInst));
 }
 
 

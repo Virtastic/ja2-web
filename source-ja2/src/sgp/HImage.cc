@@ -1,4 +1,6 @@
 #include <stdexcept>
+#include <vector>
+#include <cstring>
 
 #include "Types.h"
 #include "Debug.h"
@@ -7,6 +9,34 @@
 #include "PCX.h"
 #include "STCI.h"
 #include "VObject.h"
+
+SGPImage* CreatePlaceholderImage()
+{
+	// A 640x480 fully-transparent sprite. Screen-sized (not 1x1) so callers that
+	// size layout/blits from the object's dimensions stay in-bounds; transparent so
+	// nothing is drawn. Valid ETRLE: each row is transparent runs (0x80|n, n<=127)
+	// terminated by a 0 byte.
+	const UINT16 W = 640, H = 480;
+	std::vector<UINT8> data;
+	data.reserve(H * (W / 127 + 2));
+	for (UINT16 y = 0; y < H; ++y)
+	{
+		int rem = W;
+		while (rem > 0) { int run = rem < 127 ? rem : 127; data.push_back(0x80 | run); rem -= run; }
+		data.push_back(0x00); // end of row
+	}
+
+	SGPImage* img = new SGPImage(W, H, 8);
+	img->fFlags            = IMAGE_TRLECOMPRESSED;
+	img->usNumberOfObjects = 1;
+	img->pPalette.Allocate(256);
+	img->uiSizePixData     = static_cast<UINT32>(data.size());
+	img->pImageData.Allocate(data.size());
+	std::memcpy(static_cast<UINT8*>(img->pImageData), data.data(), data.size());
+	img->pETRLEObject.Allocate(1);
+	img->pETRLEObject[0]   = ETRLEObject{ 0, static_cast<UINT32>(data.size()), 0, 0, H, W };
+	return img;
+}
 
 
 // This is the color substituted to keep a 24bpp -> 16bpp color
@@ -92,7 +122,13 @@ Create16BPPPaletteShaded
 **********************************************************************************************/
 UINT16* Create16BPPPaletteShaded(const SGPPaletteEntry* pPalette, UINT32 rscale, UINT32 gscale, UINT32 bscale, BOOLEAN mono)
 {
-	Assert(pPalette != NULL);
+	// A missing image (tolerated with a placeholder — e.g. the JA2 demo's absent
+	// loadscreen graphics) can leave a video object without a palette. Don't
+	// dereference null: return a black shade table instead of crashing.
+	if (pPalette == NULL)
+	{
+		return new UINT16[256]{};
+	}
 
 	UINT16* const p16BPPPalette = new UINT16[256]{};
 

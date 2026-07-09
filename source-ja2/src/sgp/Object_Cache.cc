@@ -24,8 +24,20 @@ SGPVObject * GetVObject(cache_key_t const filename)
 		return &cachePos->second;
 	}
 
-	// Not found: load it and add it to the cache.
-	AutoSGPImage image{ CreateImage(filename, IMAGE_ALLIMAGEDATA) };
+	// Not found: load it and add it to the cache. If the image is missing (e.g. a
+	// graphic the JA2 demo doesn't ship, like the main-menu background), fall back
+	// to a blank placeholder instead of aborting.
+	SGPImage* raw = nullptr;
+	try
+	{
+		raw = CreateImage(filename, IMAGE_ALLIMAGEDATA);
+	}
+	catch (...)
+	{
+		SLOGW("Could not load cached image '{}' — using a blank placeholder", filename);
+		raw = CreatePlaceholderImage();
+	}
+	AutoSGPImage image{ raw };
 	auto const newPos{ gObjectCache.emplace(filename, image.get()) };
 	return &newPos.first->second;
 }

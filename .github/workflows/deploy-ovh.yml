@@ -63,15 +63,19 @@ jobs:
             | tee /dev/stderr | grep -qi '^cross-origin-opener-policy: same-origin'
 
       # Purge the edge cache for the engine artifacts — they keep stable names but change per build,
-      # so the 30-day immutable cache rule would otherwise serve a stale engine. Best-effort: only
-      # runs if a purge-capable token is configured as the CF_PURGE_TOKEN secret.
+      # so the 30-day immutable cache rule would otherwise serve a stale engine. Best-effort: a no-op
+      # unless the CF_PURGE_TOKEN + CF_ZONE_ID secrets are configured. (secrets can't be used in a
+      # step `if:`, so the guard lives in the shell.)
       - name: Purge Cloudflare cache
-        if: ${{ secrets.CF_PURGE_TOKEN != '' }}
         continue-on-error: true
         env:
           CF_PURGE_TOKEN: ${{ secrets.CF_PURGE_TOKEN }}
           CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
         run: |
+          if [ -z "$CF_PURGE_TOKEN" ] || [ -z "$CF_ZONE_ID" ]; then
+            echo "CF_PURGE_TOKEN/CF_ZONE_ID not set — skipping edge purge (purge manually on redeploy)."
+            exit 0
+          fi
           curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
             -H "Authorization: Bearer ${CF_PURGE_TOKEN}" -H "Content-Type: application/json" \
             --data '{"files":[

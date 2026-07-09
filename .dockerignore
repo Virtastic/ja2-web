@@ -1,0 +1,36 @@
+# Keep the build context small + reproducible. The image builds the engine from source-ja2 and
+# ships only the tracked static play/*.html — never the huge data blobs or local build trees.
+.git
+**/build-wasm/
+build-wasm/
+source-ja2/build*/
+**/target/
+**/__pycache__/
+
+# Commercial game data + generated data packages (upload-only deploy hosts none of this).
+gamedata-src/
+gamedata-lean/
+fsroot/gamedata/
+*.slf
+!source-ja2/rust/stracciatella/src/vfs/test_fixtures/empty.slf
+!source-ja2/assets/unittests/data/empty.slf
+
+# Generated web/wasm artifacts (rebuilt in the builder stage; must not leak from context).
+play/ja2.js
+play/ja2.wasm
+play/ja2.data
+play/ja2-gamedata.*
+play/ja2-lean.*
+*.br
+
+# Dev-only / bulky vendored spikes not needed for the wasm build.
+play/server.py
+play/test.html
+wasm-build/smoke/
+wasm-build/smoke2/
+wasm-build/fltk-release-1.4.3/
+wasm-build/fltk.tar.gz
+.env
+play/.env
+*.log
+.DS_Store

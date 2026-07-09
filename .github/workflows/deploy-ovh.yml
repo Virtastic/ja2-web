@@ -1,0 +1,81 @@
+name: deploy-ovh (ja2.virtastic.app)
+
+# Deploys the JA2-WASM game to the OVH VPS via the self-hosted runner in the Virtastic org.
+# The runner executes ON the VPS with docker access, so steps use docker / docker compose directly.
+#
+# Prereqs on the box: the shared `edge-caddy` container + `nostalgia` network, and
+# /opt/edge/certs/virtastic.{crt,key} (the *.virtastic.app wildcard — already there for morrowind).
+# The `ja2-builder:1` toolchain image is built on first run if missing (see the bootstrap step).
+on:
+  push:
+    branches: [ovhcloud]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-ovh-ja2
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, ovh, virtastic]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Bootstrap the toolchain image once (emscripten 6.0.1 + Rust nightly). --network=host: rustup
+      # + the wasm target download need egress the default build bridge lacks. Rebuild manually when
+      # the pins in wasm-build/env.sh change: docker build --network=host -t ja2-builder:1 -f Dockerfile.builder .
+      - name: Ensure builder image
+        run: |
+          docker image inspect ja2-builder:1 >/dev/null 2>&1 \
+            || DOCKER_BUILDKIT=1 docker build --network=host -t ja2-builder:1 -f Dockerfile.builder .
+
+      # Incremental JA2 build FROM the builder image. --network=host: cargo (build-std crate
+      # downloads) + emscripten's SDL2 port need egress.
+      - name: Build image
+        run: DOCKER_BUILDKIT=1 docker build --network=host -t ja2:ovh -f Dockerfile .
+
+      - name: Sync compose to /opt/ja2
+        run: |
+          sudo mkdir -p /opt/ja2
+          sudo cp docker-compose.prod.yml /opt/ja2/docker-compose.prod.yml
+
+      # Drop the vhost into the shared edge's sites dir (imported by /opt/edge/Caddyfile).
+      - name: Install edge vhost
+        run: sudo cp deploy/ja2.caddy /opt/edge/sites/ja2.caddy
+
+      - name: Start / update container
+        run: docker compose -f /opt/ja2/docker-compose.prod.yml up -d
+
+      # Validate, then restart the shared edge to apply (admin API is disabled, so `caddy reload`
+      # can't be used — restart re-reads the Caddyfile; ~3s blip). Validate first to protect the
+      # other sites on this edge.
+      - name: Apply edge config
+        run: |
+          docker exec edge-caddy caddy validate --config /etc/caddy/Caddyfile
+          docker restart edge-caddy
+
+      # Health check on the shared network: 200 + cross-origin-isolation header present.
+      - name: Health check
+        run: |
+          sleep 4
+          docker run --rm --network nostalgia curlimages/curl:latest \
+            -fsS -D - -o /dev/null http://ja2:80/ \
+            | tee /dev/stderr | grep -qi '^cross-origin-opener-policy: same-origin'
+
+      # Purge the edge cache for the engine artifacts — they keep stable names but change per build,
+      # so the 30-day immutable cache rule would otherwise serve a stale engine. Best-effort: only
+      # runs if a purge-capable token is configured as the CF_PURGE_TOKEN secret.
+      - name: Purge Cloudflare cache
+        if: ${{ secrets.CF_PURGE_TOKEN != '' }}
+        continue-on-error: true
+        env:
+          CF_PURGE_TOKEN: ${{ secrets.CF_PURGE_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+        run: |
+          curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CF_PURGE_TOKEN}" -H "Content-Type: application/json" \
+            --data '{"files":[
+              "https://ja2.virtastic.app/ja2.js",
+              "https://ja2.virtastic.app/ja2.wasm",
+              "https://ja2.virtastic.app/ja2.data"
+            ]}'

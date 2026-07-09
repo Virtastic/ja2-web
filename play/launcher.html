@@ -19,7 +19,7 @@
    -webkit-font-smoothing:antialiased; padding:clamp(26px,7vh,80px) 22px 46px;
    display:flex; justify-content:center;
  }
- /* Low blood-red glow on the horizon — Deidranna's Arulco burning. */
+ /* Low blood-red glow on the horizon; Deidranna's Arulco burning. */
  body::before{
    content:''; position:fixed; inset:0; z-index:-2; pointer-events:none;
    background:
@@ -61,7 +61,7 @@
    display:flex; flex-direction:column; align-items:center; gap:13px;
    transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
  }
- /* Corner brackets — kindle from khaki to gold on hover/focus. */
+ /* Corner brackets: kindle from khaki to gold on hover/focus. */
  .card::after{
    content:''; position:absolute; inset:12px; pointer-events:none; opacity:.7;
    --c:var(--khaki); transition:opacity .18s ease;
@@ -134,7 +134,7 @@
 <div class="wrap">
   <p class="eyebrow reveal d1">Jagged Alliance 2 · in your browser</p>
   <h1 class="reveal d1">Jagged Alliance <span class="two">2</span></h1>
-  <p class="deck reveal d2">Assemble your squad and liberate Arulco — running entirely on your
+  <p class="deck reveal d2">Assemble your squad and liberate Arulco, running entirely on your
     machine, nothing uploaded. Point the engine at your own copy of the game to play.</p>
   <div class="rule reveal d2"><span class="diamond"></span></div>
 
@@ -157,14 +157,15 @@
       <div class="kicker">Your copy</div>
       <h2>Bring your own JA2</h2>
       <p>Point to the <b>Data</b> folder of a legal Jagged Alliance 2 install. Files are read straight
-         from your disk — no upload. A <b>Wildfire</b> install is detected automatically.</p>
+         from your disk, no upload. Vanilla JA2 (Gold) is what runs; expansions like Wildfire aren't
+         supported.</p>
       <div class="note" id="local-note"></div>
       <div class="go">Choose your JA2 folder <span class="arw">▸</span></div>
     </div>
   </div>
 
   <footer class="reveal d5">
-    Jagged Alliance 2 game data is not included or distributed here — supply your own legally-obtained
+    Jagged Alliance 2 game data is not included or distributed here; supply your own legally-obtained
     copy. ja2-web is based on the
     <a href="https://ja2-stracciatella.github.io/" target="_blank" rel="noopener">JA2 Stracciatella</a>
     engine, rebuilt in WebAssembly to run in the browser, and is released under the GPLv3.
@@ -196,7 +197,7 @@
  // --- Own-data helpers ---
  const note=(msg,cls)=>{ const n=$('local-note'); n.textContent=msg||''; n.className='note '+(cls||'muted'); };
 
- // Users often pick the install root, not "Data" — descend one level if a Data/data folder exists.
+ // Users often pick the install root, not "Data"; descend one level if a Data/data folder exists.
  async function resolveDataDir(dir){
    for await (const [name,h] of dir.entries())
      if (h.kind==='directory' && name.toLowerCase()==='data') return { data:h, root:dir };
@@ -234,7 +235,7 @@
      const { data, root } = await resolveDataDir(picked);
      const scan = await scanJA2(data, root);
      if (!scan){
-       note('That doesn’t look like a JA2 install. Pick the game folder (or its Data folder) — it must contain Data/*.slf archives (DATA.SLF, MAPS.SLF, TILESETS.SLF …).','err');
+       note('That doesn’t look like a JA2 install. Pick the game folder (or its Data folder); it must contain Data/*.slf archives (DATA.SLF, MAPS.SLF, TILESETS.SLF …).','err');
        return;
      }
      // Grant read permission while we still hold the user gesture, then remember the handle.
@@ -245,8 +246,8 @@
      await idbSet(KEY, picked);
      await idbSet(METAKEY, meta);
      let msg='Found '+scan.slfCount+' data archive'+(scan.slfCount===1?'':'s')+'.';
-     if (scan.wildfire) msg+=' Wildfire detected (partial support).';
-     if (scan.has113)   msg+=' Looks like a 1.13/modified install.';
+     if (scan.wildfire) msg+=' This looks like Wildfire; it will run as vanilla JA2 and may glitch (expansion not supported).';
+     if (scan.has113)   msg+=' Looks like a 1.13/modified install; mod content is not loaded.';
      note(msg+' Deploying…', scan.wildfire||scan.has113 ? 'warn' : 'ok');
      location.href='index.html?src=local';
    } catch(e){

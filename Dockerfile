@@ -48,6 +48,8 @@ FROM nginx:1.27-alpine AS runtime
 COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
 # Static web files straight from the build context (editing them = a fast runtime-only rebuild).
 COPY play/index.html play/launcher.html play/settings.html /usr/share/nginx/html/
+# Gameplay trailer (web-optimized 1080p H.264, faststart; converted from ja2-mov.mov).
+COPY play/ja2-mov.mp4 /usr/share/nginx/html/
 # Built engine artifacts from the builder stage. (No ja2-gamedata.*/ja2-lean.* — upload-only.)
 COPY --from=builder /build/play/ja2.js   /usr/share/nginx/html/
 COPY --from=builder /build/play/ja2.wasm /usr/share/nginx/html/

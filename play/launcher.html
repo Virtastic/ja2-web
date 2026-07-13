@@ -141,7 +141,7 @@
   <!-- Return-visit fast path -->
   <div class="continue reveal" id="continue">
     <div class="txt">Remembered install: <b id="continue-name">your JA2 folder</b></div>
-    <button class="btn btn-ghost" id="continue-btn">Deploy <span class="arw">▸</span></button>
+    <button class="btn btn-ghost" id="continue-btn">Continue <span class="arw">▸</span></button>
   </div>
 
   <div class="cards">
@@ -248,7 +248,7 @@
      let msg='Found '+scan.slfCount+' data archive'+(scan.slfCount===1?'':'s')+'.';
      if (scan.wildfire) msg+=' This looks like Wildfire; it will run as vanilla JA2 and may glitch (expansion not supported).';
      if (scan.has113)   msg+=' Looks like a 1.13/modified install; mod content is not loaded.';
-     note(msg+' Deploying…', scan.wildfire||scan.has113 ? 'warn' : 'ok');
+     note(msg+' Starting…', scan.wildfire||scan.has113 ? 'warn' : 'ok');
      location.href='index.html?src=local';
    } catch(e){
      if (e && e.name==='AbortError') return; // user cancelled the picker

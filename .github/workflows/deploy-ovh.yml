@@ -63,23 +63,32 @@ jobs:
             | tee /dev/stderr | grep -qi '^cross-origin-opener-policy: same-origin'
 
       # Purge the edge cache for the engine artifacts — they keep stable names but change per build,
-      # so the 30-day immutable cache rule would otherwise serve a stale engine. Best-effort: a no-op
-      # unless the CF_PURGE_TOKEN + CF_ZONE_ID secrets are configured. (secrets can't be used in a
-      # step `if:`, so the guard lives in the shell.)
+      # so the 30-day immutable cache rule would otherwise serve a stale engine. This is the pipeline's
+      # Cloudflare responsibility (DNS/terraform is a manual one-time apply; see infra/terraform/README.md).
+      # Uses the shared virtastic.app token via secrets (needs the Cache Purge permission). A no-op if
+      # the secrets aren't set. (secrets can't be used in a step `if:`, so the guard lives in the shell.)
       - name: Purge Cloudflare cache
         continue-on-error: true
         env:
           CF_PURGE_TOKEN: ${{ secrets.CF_PURGE_TOKEN }}
-          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CF_ZONE_ID: 875c5c671fa7e246307b9f70d56fc6e1   # virtastic.app zone id (not secret)
         run: |
-          if [ -z "$CF_PURGE_TOKEN" ] || [ -z "$CF_ZONE_ID" ]; then
-            echo "CF_PURGE_TOKEN/CF_ZONE_ID not set — skipping edge purge (purge manually on redeploy)."
+          if [ -z "$CF_PURGE_TOKEN" ]; then
+            echo "::warning::CF_PURGE_TOKEN not set — edge cache NOT purged; the CDN may serve a stale engine until it expires. Set it (org secret) or purge manually."
             exit 0
           fi
-          curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+          resp=$(curl -sS -w '\n%{http_code}' -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
             -H "Authorization: Bearer ${CF_PURGE_TOKEN}" -H "Content-Type: application/json" \
             --data '{"files":[
               "https://ja2.virtastic.app/ja2.js",
               "https://ja2.virtastic.app/ja2.wasm",
               "https://ja2.virtastic.app/ja2.data"
-            ]}'
+            ]}')
+          code=$(printf '%s' "$resp" | tail -n1)
+          body=$(printf '%s' "$resp" | sed '$d')
+          echo "$body"
+          if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"success":true'; then
+            echo "Edge cache purged for ja2.{js,wasm,data}."
+          else
+            echo "::warning::Cloudflare purge failed (HTTP $code). Check the token's Cache Purge permission / CF_ZONE_ID, or purge manually in the dashboard."
+          fi

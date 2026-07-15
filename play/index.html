@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Jagged Alliance 2</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23151210'/><text x='8' y='13' font-family='Georgia,serif' font-size='13' font-weight='bold' text-anchor='middle' fill='%23b3202a'>2</text></svg>">
 <style>
   html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;font-family:system-ui,sans-serif}
   /* #wrap is a full-viewport clip box; layoutCanvas() absolutely-positions and
@@ -293,7 +294,15 @@ async function mountOwnDataFolder(){
   return meta;
 }
 
+// --- Content-versioned engine path. The build stamps __ENGINE_VERSION__ with a hash of ja2.wasm and
+// moves ja2.{js,wasm,data} into e/<hash>/, so every build's engine files live at a UNIQUE path.
+// Cloudflare therefore can NEVER serve a mismatched mix of two builds' files (a mismatched loader/wasm
+// pair calls unlinked function pointers → "null function" at boot). Unstamped (local/git) → flat paths.
+var __ENGINE_VER = "__ENGINE_VERSION__";
+var __ENGINE_DIR = (__ENGINE_VER.charAt(0) === "_") ? "" : ("e/" + __ENGINE_VER + "/");
 var Module = {
+  // ja2.wasm, ja2.data AND the pthread-worker ja2.js all resolve through locateFile → versioned dir.
+  locateFile: function(path){ return __ENGINE_DIR + path; },
   canvas: document.getElementById('canvas'),
   arguments: /[?&]editor\b/.test(location.search) ? ['-editor'] : [],
   print: function(t){ console.log(t); },
@@ -414,6 +423,9 @@ function resumeAudio(){
   try {
     var ctx = Module.SDL2 && Module.SDL2.audioContext;
     if (ctx){ clampDestChannels(ctx); if (ctx.state === 'suspended') ctx.resume(); }
+    // AudioWorklet backend (default): the engine exposes its context here.
+    var wctx = window.__ja2AudioCtx;
+    if (wctx && wctx.state === 'suspended') wctx.resume();
   } catch(e){}
 }
 addEventListener('click', resumeAudio);
@@ -442,9 +454,33 @@ function startPump(){
     if (document.hidden) setTimeout(function(){ mc.port2.postMessage(0); }, 8);
     else requestAnimationFrame(function(){ mc.port2.postMessage(0); });
   }
+  // ?perf: rolling frame-time stats over the last 600 pump calls, exposed as
+  // window.__ja2FrameStats = {n, avg, p95, max} (ms). Zero cost when absent.
+  var perfOn = /[?&]perf\b/.test(location.search);
+  var perfBuf = perfOn ? [] : null;
+  function perfRecord(dt){
+    perfBuf.push(dt);
+    if (perfBuf.length > 600) perfBuf.shift();
+    var s = perfBuf.slice().sort(function(a,b){ return a-b; });
+    var sum = 0; for (var i = 0; i < s.length; i++) sum += s[i];
+    window.__ja2FrameStats = {
+      n: s.length,
+      avg: +(sum / s.length).toFixed(3),
+      p95: +s[Math.floor(s.length * 0.95)].toFixed(3),
+      max: +s[s.length - 1].toFixed(3),
+    };
+  }
   mc.port1.onmessage = function(){
     scheduled = false;
-    try { Module._ja2_pump_frame(); }
+    try {
+      if (perfOn){
+        var t0 = performance.now();
+        Module._ja2_pump_frame();
+        perfRecord(performance.now() - t0);
+      } else {
+        Module._ja2_pump_frame();
+      }
+    }
     catch(e){
       // The game called exit() (Quit menu / SDL_QUIT). Emscripten unwinds the
       // pump call with an ExitStatus; restart instead of ending the tab.
@@ -481,10 +517,18 @@ Module.onGameReady = function(){ window.__ja2Booted = true; startPump(); layoutC
 //  • default — load the bundled sample data package. It hooks
 //    Module.addRunDependency, so it MUST run before ja2.js.
 (function(){
-  function load(src, cb){ var s=document.createElement('script'); s.src=src; if(cb) s.onload=cb; document.body.appendChild(s); }
+  function load(src, cb, errCb){ var s=document.createElement('script'); s.src=src; if(cb) s.onload=cb; if(errCb) s.onerror=errCb; document.body.appendChild(s); }
   var s = location.search;
-  if (/[?&]src=local\b/.test(s)) load('ja2.js');                 // own folder (mounted in preRun)
-  else load('ja2-gamedata.js', function(){ load('ja2.js'); });   // default → full bundled sample
+  if (/[?&]src=local\b/.test(s)) load(__ENGINE_DIR + 'ja2.js');   // own folder (mounted in preRun)
+  else load('ja2-gamedata.js', function(){ load(__ENGINE_DIR + 'ja2.js'); }, // default → full bundled sample
+    function(){
+      // Production is upload-only: no bundled data package is deployed, so any
+      // non-src=local entry can't boot. Send the visitor to the chooser instead
+      // of hanging forever on the loading screen.
+      var el = document.getElementById('ld-status');
+      if (el) el.textContent = 'No bundled game data here — taking you to the chooser…';
+      setTimeout(function(){ location.href = 'launcher.html'; }, 1800);
+    });
 })();
 </script>
 </body>

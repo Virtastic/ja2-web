@@ -39,7 +39,10 @@ RUN --mount=type=cache,id=ja2-build-wasm,target=/build/build-wasm \
  && bash wasm-build/configure-ja2.sh \
  && . wasm-build/env.sh && ninja -C build-wasm ja2 \
  && mkdir -p /build/play \
- && cp build-wasm/ja2.js build-wasm/ja2.wasm build-wasm/ja2.data /build/play/
+ && cp build-wasm/ja2.js build-wasm/ja2.wasm build-wasm/ja2.data /build/play/ \
+# Precompress for nginx gzip_static (infra/nginx.conf): Cloudflare doesn't compress
+# .data (octet-stream) at the edge, so without these the 42 MB preload ships raw.
+ && gzip -9 -k -f /build/play/ja2.js /build/play/ja2.wasm /build/play/ja2.data
 
 # ---- runtime ---------------------------------------------------------------------------------
 FROM nginx:1.27-alpine AS runtime
@@ -50,8 +53,19 @@ COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
 COPY play/index.html play/launcher.html play/settings.html /usr/share/nginx/html/
 # Gameplay trailer (web-optimized 1080p H.264, faststart; converted from ja2-mov.mov).
 COPY play/ja2-mov.mp4 /usr/share/nginx/html/
-# Built engine artifacts from the builder stage. (No ja2-gamedata.*/ja2-lean.* — upload-only.)
-COPY --from=builder /build/play/ja2.js   /usr/share/nginx/html/
-COPY --from=builder /build/play/ja2.wasm /usr/share/nginx/html/
-COPY --from=builder /build/play/ja2.data /usr/share/nginx/html/
+# Built engine artifacts from the builder stage, with their .gz siblings for
+# nginx gzip_static. (No ja2-gamedata.*/ja2-lean.* — upload-only.)
+COPY --from=builder /build/play/ja2.js      /usr/share/nginx/html/
+COPY --from=builder /build/play/ja2.js.gz   /usr/share/nginx/html/
+COPY --from=builder /build/play/ja2.wasm    /usr/share/nginx/html/
+COPY --from=builder /build/play/ja2.wasm.gz /usr/share/nginx/html/
+COPY --from=builder /build/play/ja2.data    /usr/share/nginx/html/
+COPY --from=builder /build/play/ja2.data.gz /usr/share/nginx/html/
+
+# Content-version the engine: move ja2.{js,wasm,data}(+.gz) into /usr/share/nginx/html/e/<hash>/ and
+# stamp that hash into index.html, so Cloudflare can never serve a mismatched mix of two builds (the
+# "null function" crash). Alpine busybox has sh/sed/sha256sum. index.html stays no-cache, always current.
+COPY wasm-build/version-engine.sh /tmp/version-engine.sh
+RUN NAME=ja2 PLAY=/usr/share/nginx/html sh /tmp/version-engine.sh && rm /tmp/version-engine.sh
+
 EXPOSE 80

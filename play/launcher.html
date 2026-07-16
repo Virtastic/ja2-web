@@ -270,10 +270,17 @@
      <li><b>Disc / other</b> — wherever you installed it.</li>
    </ul>
 
-   <h4>2 · Let the browser read it</h4>
-   <p>Click <b>Choose your JA2 folder</b>, select it, and when Chrome asks to view the folder choose
-      <b>View files</b>. Nothing leaves your machine — this only lets the engine read the game data on
-      demand. Your pick is remembered for next time as a revocable browser permission.</p>
+   <h4>2 · Let the browser open it</h4>
+   <p>Click <b>Choose your JA2 folder</b>, select it, and when Chrome asks to <b>edit</b> the folder
+      choose <b>Edit files</b>. Nothing leaves your machine — this lets the engine read your game data
+      on demand and write your saves back to the folder (see below). Your pick is remembered for next
+      time.</p>
+
+   <h4>Your saves live on disk</h4>
+   <p>Saved games are written to a <code>ja2-web-saves</code> folder <b>inside the folder you picked</b>
+      — real files on your drive, <b>not</b> in the browser. Clearing your browser history or cache
+      won't touch them, they're there next time you play, and you can back them up or copy them like
+      any other file. (This is why Chrome asks to <b>edit</b> the folder, not just view it.)</p>
 
    <h4>What runs</h4>
    <p>Plain <b>vanilla JA2 (Gold)</b>. If your copy is <b>Wildfire</b> or a <b>1.13 / modded</b> install
@@ -284,16 +291,16 @@
    <ul>
      <li><b>Chromium browser on desktop</b> (Chrome, Edge, Brave) — this uses the File System Access
          API, which Firefox and Safari don't support.</li>
-     <li><b>Nothing is uploaded.</b> The game reads from your disk as it needs files.</li>
-     <li><b>Saves</b> are stored by your browser for this site — so if you want to keep them, avoid
-         clearing this site's data.</li>
+     <li><b>Nothing is uploaded.</b> The game reads your data and writes your saves on your own disk —
+         no copy is stored on any server.</li>
    </ul>
 
    <h4>If something's off</h4>
    <ul>
      <li><b>"Doesn't look like a JA2 install"</b> — pick the folder that contains <code>Data</code>
          with the <code>.slf</code> archives (or the <code>Data</code> folder itself).</li>
-     <li><b>Permission denied</b> — reopen the picker and choose <b>View files</b>.</li>
+     <li><b>Edit access denied</b> — reopen the picker and choose <b>Edit files</b> (needed so saves
+         can be written to the folder).</li>
    </ul>`;
  (function(){
    const bd=$('modal-bd'), body=$('modal-body');
@@ -360,7 +367,7 @@
  async function pickLocal(){
    if (!hasFSA){ note('Your browser has no folder-picker (File System Access API). Use Chrome, Edge or Brave on desktop.','err'); return; }
    try {
-     const picked = await window.showDirectoryPicker({ id:'ja2', mode:'read' });
+     const picked = await window.showDirectoryPicker({ id:'ja2', mode:'readwrite' });
      note('Checking folder…');
      const { data, root } = await resolveDataDir(picked);
      const scan = await scanJA2(data, root);
@@ -369,8 +376,8 @@
        return;
      }
      // Grant read permission while we still hold the user gesture, then remember the handle.
-     if ((await picked.requestPermission({ mode:'read' })) !== 'granted'){
-       note('Read permission was denied.','err'); return;
+     if ((await picked.requestPermission({ mode:'readwrite' })) !== 'granted'){
+       note('Edit access was declined — it’s needed so your saved games can be written to the folder. Reopen and choose “Edit files”.','err'); return;
      }
      const meta = { resversion:'ENGLISH', wildfire:scan.wildfire, mod113:scan.has113, name:picked.name||'JA2' };
      await idbSet(KEY, picked);
@@ -400,13 +407,13 @@
    let handle; try { handle = await idbGet(KEY); } catch(e){ return; }
    if (!handle) return;
    let perm='prompt';
-   try { perm = await handle.queryPermission({ mode:'read' }); } catch(e){ return; }
+   try { perm = await handle.queryPermission({ mode:'readwrite' }); } catch(e){ return; }
    $('continue-name').textContent = handle.name || 'your JA2 folder';
    $('continue').classList.add('show');
    $('continue-btn').addEventListener('click', async ()=>{
      try {
-       if (perm!=='granted') perm = await handle.requestPermission({ mode:'read' });
-       if (perm!=='granted'){ note('Read permission was denied.','err'); return; }
+       if (perm!=='granted') perm = await handle.requestPermission({ mode:'readwrite' });
+       if (perm!=='granted'){ note('Edit access was declined — it’s needed to save your games to the folder. Choose “Edit files”.','err'); return; }
        location.href='index.html?src=local';
      } catch(e){ note('Could not reopen that folder. Pick it again.','err'); }
    });

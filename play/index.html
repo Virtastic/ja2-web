@@ -229,6 +229,58 @@ function presetAudioContext(){
   } catch(e){ console.warn('audio ctx preset failed:', e); }
 }
 
+// --- Folder-backed saves (?src=local) -----------------------------------------------------------
+// Mirror JA2's saved games to/from a dedicated ja2-web-saves subfolder INSIDE the player's chosen
+// folder, so saves live ON DISK and survive clearing browser data (like the desktop game). The folder
+// is the authoritative copy; IDBFS is just a working cache. JA2 writes saves to <home>/.ja2/SavedGames
+// (SAVED_GAME_DIR under the stracciatella home) — here HOME=/userdata, so /userdata/.ja2/SavedGames.
+var __folderSaves = null, __mirrored = {}, __mirroring = false, __mirrorAgain = false;
+var __JA2_SAVES = '/userdata/.ja2/SavedGames';
+async function setupFolderSaves(dir){
+  if (!dir) return;
+  var perm='prompt'; try { perm = await dir.queryPermission({mode:'readwrite'}); } catch(e){}
+  if (perm !== 'granted'){ try { perm = await dir.requestPermission({mode:'readwrite'}); } catch(e){} }
+  if (perm !== 'granted'){ console.warn('[saves] folder is read-only — saves stay in browser storage this session'); return; }
+  var sh; try { sh = await dir.getDirectoryHandle('ja2-web-saves', {create:true}); }
+  catch(e){ console.warn('[saves] could not open ja2-web-saves in your folder', e); return; }
+  try { FS.mkdirTree(__JA2_SAVES); } catch(e){}
+  var loaded=0;                                       // mirror IN: folder -> MEMFS (folder wins)
+  try { for await (const [name,h] of sh.entries()){
+    if (h.kind!=='file') continue;
+    try { var buf=new Uint8Array(await (await h.getFile()).arrayBuffer());
+          FS.writeFile(__JA2_SAVES+'/'+name, buf);
+          try { __mirrored[name]=FS.stat(__JA2_SAVES+'/'+name).mtime.getTime(); } catch(_){}
+          loaded++; }
+    catch(e){ console.warn('[saves] loading '+name+' failed', e); }
+  } } catch(e){ console.warn('[saves] could not read your saves folder', e); }
+  __folderSaves = { dir: dir, saves: sh };
+  console.log('[saves] '+(loaded?('loaded '+loaded+' save(s) from'):'saving to')+' ja2-web-saves in your folder (on disk, not the browser)');
+  try { window.__ja2Sync(); } catch(e){}
+}
+// mirror OUT: MEMFS -> folder. Only files whose mtime changed since last mirror; reflects deletions.
+async function mirrorSavesToFolder(){
+  if (!__folderSaves || __mirroring){ if(__folderSaves) __mirrorAgain=true; return; }
+  __mirroring=true;
+  var sh=__folderSaves.saves, live={};
+  try {
+    var names=[]; try { names=FS.readdir(__JA2_SAVES).filter(function(n){ return n!=='.'&&n!=='..'; }); } catch(e){}
+    for (var i=0;i<names.length;i++){
+      var n=names[i], st; try { st=FS.stat(__JA2_SAVES+'/'+n); if(!FS.isFile(st.mode)) continue; } catch(e){ continue; }
+      live[n]=1; var mt=st.mtime.getTime();
+      if (__mirrored[n]===mt) continue;
+      try { var data=FS.readFile(__JA2_SAVES+'/'+n);
+            var fh=await sh.getFileHandle(n,{create:true});
+            var w=await fh.createWritable(); await w.write(data); await w.close();
+            __mirrored[n]=mt; }
+      catch(e){ console.warn('[saves] writing '+n+' to your folder failed', e); }
+    }
+    for (var d in __mirrored){ if(!live[d]){ try { await sh.removeEntry(d); } catch(e){} delete __mirrored[d]; } }
+  } catch(e){ console.warn('[saves] mirror to folder failed', e); }
+  __mirroring=false;
+  if (__mirrorAgain){ __mirrorAgain=false; mirrorSavesToFolder(); }
+}
+window.__mirrorSaves = mirrorSavesToFolder;
+
 // ?src=local: copy the player's OWN Jagged Alliance 2 "Data" folder (picked in
 // launcher.html and remembered as a FileSystemDirectoryHandle) into MEMFS at
 // /owndata/data. The engine's VFS then reads the SLF archives from there
@@ -249,6 +301,7 @@ async function mountOwnDataFolder(){
   var dir = await ljGet('ja2data');
   var meta = (await ljGet('ja2meta')) || {};
   if (!dir) throw new Error('No folder was remembered');
+  window.__ja2Dir = dir;                              // handed to setupFolderSaves for on-disk saves
   var perm='prompt';
   try { perm = await dir.queryPermission({mode:'read'}); } catch(e){}
   if (perm !== 'granted'){
@@ -335,6 +388,10 @@ var Module = {
             var meta = await mountOwnDataFolder();
             cfg.game_dir = '/owndata';
             if (meta && meta.resversion) cfg.resversion = meta.resversion;
+            // Wire this folder's ja2-web-saves <-> the engine so saved games live on disk. IDBFS is
+            // already loaded here (we're inside its syncfs(true) callback), so no reconcile race. Needs
+            // the read-write grant; falls back to browser storage if only read was allowed.
+            try { await setupFolderSaves(window.__ja2Dir); } catch(e){ console.warn('[saves] setup skipped', e); }
           } catch(e){
             console.error('own-data mount failed', e);
             statusEl.classList.remove('hide', 'indet');
@@ -409,7 +466,7 @@ function restartGame(reason){
 }
 
 // Flush saves/config to IndexedDB. Called on interval, tab-hide, and by the game after saves.
-window.__ja2Sync = function(){ try { FS.syncfs(false, function(){}); } catch(e){} };
+window.__ja2Sync = function(){ try { FS.syncfs(false, function(){}); } catch(e){} try { mirrorSavesToFolder(); } catch(e){} };
 setInterval(window.__ja2Sync, 15000);
 document.addEventListener('visibilitychange', function(){
   if (document.visibilityState === 'hidden') window.__ja2Sync();

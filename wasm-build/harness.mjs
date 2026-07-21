@@ -89,6 +89,12 @@ if (cmd === 'launch') {
     '--no-first-run', '--no-default-browser-check',
     '--window-size=1280,960', `--user-data-dir=${PROFILE}`,
     '--enable-features=SharedArrayBuffer',
+    // Keep RAF/timers at full speed while the window is occluded so testing
+    // never needs to steal focus from the user (whose keystrokes would then
+    // land in this window and hijack the tab).
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
     url,
   ], { detached: true, stdio: 'ignore' });
   child.unref();
@@ -186,9 +192,19 @@ await withPage(async c => {
     console.log('moved');
   } else if (cmd === 'key') {
     // Real key events via CDP so SDL2 receives them (synthetic DOM events don't).
-    // Usage: key <keyName> [char]   e.g. key Escape   |   key Enter \n   |  key a a
-    const keyName = process.argv[3];
+    // Usage: key <keyName> [char]     e.g. key Escape | key Enter \n | key a a
+    //        key Alt+s / Ctrl+s / Shift+x   (modifier chords; Alt=1 Ctrl=2 Shift=8)
+    let keyName = process.argv[3];
     const text = process.argv[4];
+    let modifiers = 0;
+    const modBits = { alt: 1, ctrl: 2, control: 2, meta: 4, cmd: 4, shift: 8 };
+    while (keyName.includes('+')) {
+      const idx = keyName.indexOf('+');
+      const mod = keyName.slice(0, idx).toLowerCase();
+      if (!(mod in modBits)) break;
+      modifiers |= modBits[mod];
+      keyName = keyName.slice(idx + 1);
+    }
     const codeMap = { Escape: 'Escape', Enter: 'Enter', Backspace: 'Backspace', Tab: 'Tab', Space: 'Space' };
     const windowsVK = { Escape: 27, Enter: 13, Backspace: 8, Tab: 9, Space: 32 };
     const isChar = keyName.length === 1;
@@ -196,11 +212,19 @@ await withPage(async c => {
       key: keyName,
       code: isChar ? 'Key' + keyName.toUpperCase() : (codeMap[keyName] || keyName),
       windowsVirtualKeyCode: isChar ? keyName.toUpperCase().charCodeAt(0) : (windowsVK[keyName] || 0),
+      modifiers,
     };
-    await c.send('Input.dispatchKeyEvent', { type: 'keyDown', ...base, text: text ?? (isChar ? keyName : undefined) });
+    // With a modifier held, send its keyDown first so SDL tracks mod state.
+    const modKeys = [];
+    if (modifiers & 1) modKeys.push({ key: 'Alt', code: 'AltLeft', windowsVirtualKeyCode: 18 });
+    if (modifiers & 2) modKeys.push({ key: 'Control', code: 'ControlLeft', windowsVirtualKeyCode: 17 });
+    if (modifiers & 8) modKeys.push({ key: 'Shift', code: 'ShiftLeft', windowsVirtualKeyCode: 16 });
+    for (const mk of modKeys) await c.send('Input.dispatchKeyEvent', { type: 'keyDown', ...mk, modifiers });
+    await c.send('Input.dispatchKeyEvent', { type: 'keyDown', ...base, text: modifiers ? undefined : (text ?? (isChar ? keyName : undefined)) });
     await sleep(30);
     await c.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
-    console.log('key', keyName);
+    for (const mk of modKeys.reverse()) await c.send('Input.dispatchKeyEvent', { type: 'keyUp', ...mk, modifiers });
+    console.log('key', process.argv[3]);
   } else if (cmd === 'type') {
     for (const ch of (process.argv[3] || '')) {
       await c.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ch, text: ch, windowsVirtualKeyCode: ch.toUpperCase().charCodeAt(0), code: 'Key' + ch.toUpperCase() });

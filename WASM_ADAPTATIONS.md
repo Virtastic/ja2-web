@@ -89,14 +89,26 @@ HTML launcher provides the same functionality against the same config file.
 ## Audio (SoundMan.cc)
 
 miniaudio is compiled with `MA_NO_DEVICE_IO` — it's a codec/resampler only; the
-actual device is SDL2's, which under emscripten is the Web Audio driver. Fixes:
-- **Sample rate:** `SDL_OpenAudio` now reads back the *obtained* spec on
-  emscripten. The Web Audio device is forced to its context rate (usually 48000),
-  not the requested 44100; feeding 44100-rate frames to a 48000 device made
-  everything play ~8.8% pitch/speed shifted. Decoders/converters now target the
-  real device rate.
-- **Buffer size:** `SOUND_SAMPLES` 1024 → 4096 on wasm — the SDL callback runs on
-  the main thread (ScriptProcessorNode), so a deeper buffer hides frame jank.
+device layer is one of two web backends:
+
+- **AudioWorklet (default):** the mixer (`SoundCallback`) runs on the browser's
+  real-time audio thread via emscripten's Wasm Audio Worklets API
+  (`-sAUDIO_WORKLET=1 -sWASM_WORKERS=1`). This is the same threading model the
+  desktop build has always used (SDL audio thread): all cross-thread audio data
+  flows through miniaudio's lock-free SPSC ring buffers, and the callback never
+  takes a blocking lock (try_lock/notify only — worklet threads forbid waits).
+  The context runs at the device rate; the callback stages interleaved S16 and
+  converts to the planar float32 the Web Audio API wants. Game frames can no
+  longer starve the mixer, and the deprecated ScriptProcessorNode warning is gone.
+- **`?audio=legacy`:** the previous SDL2/ScriptProcessorNode path (main-thread
+  mixing), kept compiled-in as a one-parameter rollback.
+
+Fixes that apply to both backends:
+- **Sample rate:** the device/context rate (usually 48000) is learned at init and
+  decoders/converters target it — feeding 44100-rate frames to a 48000 device
+  made everything play ~8.8% pitch/speed shifted.
+- **Buffer size:** `SOUND_SAMPLES` 1024 → 4096 on wasm (relevant to the legacy
+  main-thread path; the worklet renders 128-frame quanta regardless).
 - **No streaming:** `SOUND_FILE_STREAMING_THRESHOLD` is raised so large sounds
   (incl. music) load fully into memory rather than streaming — streamed decode
   would read the Rust VFS from the buffer-service worker thread.
@@ -147,9 +159,20 @@ dlmalloc "memory access out of bounds", and random hard renderer crashes.
 LoadWorldFromSGPFile)`).
 
 **Fix:** `-sSTACK_SIZE=8388608` (8 MB, desktop-sized) in the ja2 link flags
-(`wasm-build/env.sh`), plus `-sSTACK_OVERFLOW_CHECK=1` as a cheap safety net.
-Keep `-sMALLOC=mimalloc` (the atomic/OOB symptoms were stack corruption, not the
-allocator). After this the game loads into live turn-based tactical combat.
+(`wasm-build/env.sh`). Keep `-sMALLOC=mimalloc` (the atomic/OOB symptoms were
+stack corruption, not the allocator). After this the game loads into live
+turn-based tactical combat. `-sSTACK_OVERFLOW_CHECK=1` served as the safety net
+during stabilization and was removed once stable — it adds a check to every
+function call.
+
+## Performance flags (wasm SIMD)
+
+`-msimd128` is enabled everywhere (C++ `JA2_COMMON_FLAGS`/`EMCC_CFLAGS`, Rust
+`RUSTFLAGS` `+simd128`). JA2's hottest code is the per-frame software blitters
+(8bpp→16bpp palette blits); auto-vectorization roughly **halved frame times**
+(menu avg 0.85→0.38 ms; editor p95 8.0→2.6 ms; tactical at full browser
+resolution runs ~1.3 ms avg / 2.7 ms p95). Measure with `?perf` in the page URL:
+`window.__ja2FrameStats` = rolling `{n, avg, p95, max}` of `ja2_pump_frame` (ms).
 
 **Debugging tooling** (`wasm-build/harness.mjs`, `repro.sh`): a dependency-free
 headed-Chrome CDP driver (Node built-in WebSocket) that replaces the flaky

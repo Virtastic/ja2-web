@@ -18,6 +18,11 @@
 #include <SDL.h>
 #include <string_theory/string>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#include <emscripten/webaudio.h>
+#endif
+
 #include <algorithm>
 #include <assert.h>
 #include <cmath>
@@ -1018,6 +1023,116 @@ static void SoundCallback(void* userdata, Uint8* stream, int len)
 }
 
 
+#ifdef __EMSCRIPTEN__
+// ---------------------------------------------------------------------------
+// Wasm AudioWorklet backend (default on the web).
+//
+// The emscripten SDL2 audio driver runs SoundCallback on the MAIN browser
+// thread through a deprecated ScriptProcessorNode, so any long game frame
+// starves the mixer (crackle) and Chrome warns about the API. This backend
+// instead runs SoundCallback on the browser's real-time audio thread via the
+// Wasm Audio Worklets API — the same threading model the desktop build has
+// always used (SDL audio thread), which is safe here for the same reason:
+// all cross-thread audio data flows through miniaudio's lock-free SPSC ring
+// buffers, and the only locking in the callback is try_lock/notify (never a
+// blocking wait, which worklet threads forbid).
+//
+// ?audio=legacy in the page URL selects the old SDL/ScriptProcessor path.
+// ---------------------------------------------------------------------------
+static bool gUseAudioWorklet = false;
+static EMSCRIPTEN_WEBAUDIO_T gAudioWorkletCtx = 0;
+static EMSCRIPTEN_WEBAUDIO_T gAudioWorkletNode = 0;
+// The worklet thread needs its own stack; must outlive the thread.
+alignas(16) static uint8_t gAudioWorkletStack[128 * 1024];
+
+static bool JA2WorkletProcess(int numInputs, const AudioSampleFrame* inputs,
+	int numOutputs, AudioSampleFrame* outputs, int numParams,
+	const AudioParamFrame* params, void* userData)
+{
+	if (numOutputs < 1) return true;
+	AudioSampleFrame& out = outputs[0];
+	const int frames = out.samplesPerChannel;
+	const int chans  = out.numberOfChannels;
+
+	// SoundCallback mixes interleaved S16 stereo; stage it, then convert to the
+	// planar float32 the Web Audio API wants. Static: no allocation on the
+	// real-time thread (quantum is 128 by spec; leave generous headroom).
+	static INT16 stage[4096 * 2];
+	if (frames * 2 > (int)lengthof(stage))
+	{
+		std::fill_n(out.data, frames * chans, 0.0f);
+		return true;
+	}
+	SoundCallback(NULL, (Uint8*)stage, frames * 2 * (int)sizeof(INT16));
+
+	constexpr float k = 1.0f / 32768.0f;
+	for (int j = 0; j < frames; ++j)
+	{
+		out.data[j] = stage[2 * j] * k;
+	}
+	if (chans > 1)
+	{
+		for (int j = 0; j < frames; ++j)
+		{
+			out.data[frames + j] = stage[2 * j + 1] * k;
+		}
+	}
+	return true; // keep the node alive
+}
+
+static void JA2WorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T ctx, bool success, void* userData)
+{
+	if (!success)
+	{
+		SLOGE("AudioWorklet: processor creation failed; audio will be silent (reload with ?audio=legacy)");
+		return;
+	}
+	int outputChannelCounts[1] = { 2 };
+	EmscriptenAudioWorkletNodeCreateOptions opts = {};
+	opts.numberOfInputs      = 0;
+	opts.numberOfOutputs     = 1;
+	opts.outputChannelCounts = outputChannelCounts;
+	gAudioWorkletNode = emscripten_create_wasm_audio_worklet_node(ctx, "ja2-mixer", &opts, JA2WorkletProcess, NULL);
+	emscripten_audio_node_connect(gAudioWorkletNode, ctx, 0, 0);
+
+	// Autoplay policy: the context starts suspended unless created inside a user
+	// gesture. Resume on the first gesture (the page also pokes this handle).
+	EM_ASM({
+		var ctx = emscriptenGetAudioObject($0);
+		window.__ja2AudioCtx = ctx;
+		// Expose the mixer node too (test harness taps it with an AnalyserNode).
+		window.__ja2AudioNode = emscriptenGetAudioObject($1);
+		if (ctx.state !== 'running') {
+			var resume = function() {
+				ctx.resume();
+				if (ctx.state === 'running' || ctx.state === 'closed') {
+					document.removeEventListener('click', resume);
+					document.removeEventListener('keydown', resume);
+					document.removeEventListener('touchstart', resume);
+				}
+			};
+			document.addEventListener('click', resume);
+			document.addEventListener('keydown', resume);
+			document.addEventListener('touchstart', resume);
+		}
+	}, ctx, gAudioWorkletNode);
+	SLOGD("AudioWorklet: mixer node running at {} Hz", gTargetAudioSpec.freq);
+}
+
+static void JA2WorkletThreadStarted(EMSCRIPTEN_WEBAUDIO_T ctx, bool success, void* userData)
+{
+	if (!success)
+	{
+		SLOGE("AudioWorklet: thread start failed; audio will be silent (reload with ?audio=legacy)");
+		return;
+	}
+	WebAudioWorkletProcessorCreateOptions procOpts = {};
+	procOpts.name = "ja2-mixer";
+	emscripten_create_wasm_audio_worklet_processor_async(ctx, &procOpts, JA2WorkletProcessorCreated, NULL);
+}
+#endif // __EMSCRIPTEN__
+
+
 /*
  * Initializes SDL Audio Subsystem and the channel ring buffers
  */
@@ -1036,6 +1151,33 @@ static BOOLEAN SoundInitHardware(void)
 		gTargetAudioSpec.userdata = NULL;
 
 #ifdef __EMSCRIPTEN__
+		// Two web backends (see the AudioWorklet block above SoundInitHardware):
+		//  - default: Wasm AudioWorklet — mixer on the browser's real-time audio
+		//    thread, matching the desktop SDL-audio-thread model.
+		//  - ?audio=legacy: SDL2's deprecated main-thread ScriptProcessorNode.
+		// NB: no regex/backslash escapes in EM_ASM — they don't survive the C
+		// preprocessor's stringification (a \b turned this check into a no-op).
+		gUseAudioWorklet = !EM_ASM_INT({ return location.search.indexOf('audio=legacy') >= 0 ? 1 : 0; });
+		if (gUseAudioWorklet) {
+			EmscriptenWebAudioCreateAttributes attrs = {};
+			attrs.latencyHint     = "interactive";
+			attrs.sampleRate      = 0; // 0 -> the device's native rate (no context resample)
+			attrs.renderSizeHint  = AUDIO_CONTEXT_RENDER_SIZE_DEFAULT;
+			gAudioWorkletCtx = emscripten_create_audio_context(&attrs);
+			if (!gAudioWorkletCtx) {
+				throw std::runtime_error("emscripten_create_audio_context failed");
+			}
+			// Mix at the context's real rate so decoders resample exactly as they
+			// did for the SDL path (learned-device-rate); stereo S16 as always.
+			gTargetAudioSpec.freq     = emscripten_audio_context_sample_rate(gAudioWorkletCtx);
+			gTargetAudioSpec.channels = 2;
+			// The node comes up asynchronously (thread -> processor -> node);
+			// until then SoundCallback simply isn't called and channels queue in
+			// their ring buffers. Sub-second in practice.
+			emscripten_start_wasm_audio_worklet_thread_async(
+				gAudioWorkletCtx, gAudioWorkletStack, sizeof(gAudioWorkletStack),
+				JA2WorkletThreadStarted, NULL);
+		} else {
 		// The emscripten SDL2 audio driver forces the device to the Web Audio
 		// context's native sample rate (typically 48000), ignoring our 44100
 		// request. Open ONCE with obtained!=NULL only to *learn* that real rate,
@@ -1059,6 +1201,7 @@ static BOOLEAN SoundInitHardware(void)
 		SDL_CloseAudio();
 		if (SDL_OpenAudio(&gTargetAudioSpec, NULL) != 0) {
 			throw std::runtime_error(ST::format("SDL_OpenAudio (reopen) returned error: {}", SDL_GetError()).c_str());
+		}
 		}
 #else
 		if (SDL_OpenAudio(&gTargetAudioSpec, NULL) != 0) {
@@ -1086,7 +1229,11 @@ static BOOLEAN SoundInitHardware(void)
 			throw std::runtime_error(ST::format("SDL_CreateThread for SoundManBufferServiceThread returned error: {}", SDL_GetError()).c_str());
 		}
 
+#ifdef __EMSCRIPTEN__
+		if (!gUseAudioWorklet) SDL_PauseAudio(0);
+#else
 		SDL_PauseAudio(0);
+#endif
 		return TRUE;
 
 	} catch (const std::runtime_error& err) {
@@ -1102,6 +1249,11 @@ static BOOLEAN SoundInitHardware(void)
  */
 static void SoundShutdownHardware(void)
 {
+#ifdef __EMSCRIPTEN__
+	// Tear the worklet down BEFORE freeing the ring buffers it reads from.
+	if (gAudioWorkletNode) { emscripten_destroy_web_audio_node(gAudioWorkletNode); gAudioWorkletNode = 0; }
+	if (gAudioWorkletCtx)  { emscripten_destroy_audio_context(gAudioWorkletCtx);   gAudioWorkletCtx  = 0; }
+#endif
 	if (bufferServiceThread != NULL) {
 		{
 			std::lock_guard<std::mutex> lk(mutexBuffersNeedService);

@@ -49,3 +49,12 @@ source-ja2/dependencies/lib-SDL2-2.0.20-macos/
 source-ja2/assets/mods/
 fsroot/mods/simplified-chinese-localization/
 fsroot/mods/o-fortuna/
+play/testdata
+
+# Terraform: state can contain sensitive values; provider plugins + lockfile are
+# machine-local. Never commit these — infra is applied manually (see infra/terraform/README.md).
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfvars
+infra/terraform/.terraform.lock.hcl

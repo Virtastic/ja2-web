@@ -138,6 +138,10 @@ Serve the precompressed `.gz` siblings with `Content-Encoding: gzip` (nginx
 engine files are content-versioned into `e/<hash>/`, so a new build is served at a fresh
 URL and the CDN can never serve a mismatched build.
 
+To run your own instance without building anything, grab a
+[release](https://github.com/Virtastic/ja2-web/releases) and follow
+[`SELF_HOSTING.md`](SELF_HOSTING.md) (nginx / Caddy / static-host examples).
+
 ## Browser support
 
 Requires SharedArrayBuffer + WebAssembly threads (pthreads) and the File System Access
@@ -155,7 +159,7 @@ full text is in [`LICENSE`](LICENSE).
 - The front-end and tooling (`play/`, `wasm-build/`, `fsroot/` config, scripts) is
   released under the same GPLv3.
 - Bundled dependencies keep their own licenses (SDL2, miniaudio, string_theory, and the
-  rest) — see their source trees under `source-ja2/`.
+  rest) — see [`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md).
 
 ### Game data and trademarks
 

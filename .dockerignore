@@ -11,6 +11,11 @@ source-ja2/build*/
 gamedata-src/
 gamedata-lean/
 fsroot/gamedata/
+
+# Bulky community mods that aren't in git either (kept out of ja2.data — not needed to run;
+# restore from upstream stracciatella if wanted). Keeps the preloaded data blob lean.
+fsroot/mods/simplified-chinese-localization/
+fsroot/mods/o-fortuna/
 *.slf
 !source-ja2/rust/stracciatella/src/vfs/test_fixtures/empty.slf
 !source-ja2/assets/unittests/data/empty.slf

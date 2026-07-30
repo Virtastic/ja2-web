@@ -1,0 +1,24 @@
+ja2-web
+=======
+
+Copyright (C) 2025-2026 Virtastic — https://virtastic.app
+
+ja2-web is the Jagged Alliance 2 Stracciatella engine
+(https://ja2-stracciatella.github.io/) cross-compiled to WebAssembly by
+Virtastic, playable in a browser at https://ja2.virtastic.app.
+
+This work is based on JA2 Stracciatella v0.22.1, Copyright (C) the
+ja2-stracciatella developers (see source-ja2/). All WebAssembly adaptations,
+build tooling, and the web shell are by Virtastic; see WASM_ADAPTATIONS.md for a
+complete technical account.
+
+License: GNU General Public License v3.0 or later (see LICENSE).
+
+Additional term under GPLv3 section 7(b): distributions of this work or works
+based on it must preserve the author attributions in this NOTICE file and in
+the source file headers ("Modified by Virtastic" / "Copyright (C) 2025-2026
+Virtastic").
+
+Jagged Alliance is a trademark of its respective owners. This project is not
+affiliated with or endorsed by them, and no Jagged Alliance 2 game data is
+included or distributed here.

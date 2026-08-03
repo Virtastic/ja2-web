@@ -31,12 +31,12 @@ class H(http.server.SimpleHTTPRequestHandler):
 
     def send_head(self):
         # Launcher gate: only the bare root serves the chooser. The match is on the FULL path
-        # incl. query, so anything with a query string — the launcher's own index.html?nomw /
-        # index.html?src=local links, plus dev URLs like ?debug — passes straight through to
+        # incl. query, so anything with a query string - the launcher's own index.html?nomw /
+        # index.html?src=local links, plus dev URLs like ?debug - passes straight through to
         # the game. Explicit /launcher.html and assets are likewise untouched.
         if LAUNCHER and self.path in ('/', '/index.html'):
             self.path = '/launcher.html'
-        # HTTP Range support (python's SimpleHTTPRequestHandler has none) — required for the
+        # HTTP Range support (python's SimpleHTTPRequestHandler has none) - required for the
         # ?stream lazy-BSA mode (emscripten FS.createLazyFile reads the archives in chunks).
         rng = self.headers.get('Range')
         path = self.translate_path(self.path.split('?', 1)[0])
@@ -69,7 +69,7 @@ class H(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-Range', 'bytes */%d' % os.path.getsize(path))
                 self.end_headers()
                 return None
-        # Serve a precompressed sibling (<file>.br) when present, fresh, and accepted —
+        # Serve a precompressed sibling (<file>.br) when present, fresh, and accepted -
         # roughly halves the first-visit download of the .esm/.wasm/.data payloads.
         # (wasm-build/make_br.sh generates them; the mtime check falls back to the raw
         # file if a redeploy left a stale .br behind.)
@@ -94,7 +94,7 @@ class H(http.server.SimpleHTTPRequestHandler):
         self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
         self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
         self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
-        # The big build artifacts are immutable — let the browser cache them so
+        # The big build artifacts are immutable - let the browser cache them so
         # the ~860MB game-data package isn't re-downloaded on every reload.
         # HTML (and anything else) stays uncached so page edits show up at once.
         path = self.path.split('?', 1)[0]

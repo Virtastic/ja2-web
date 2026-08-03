@@ -21,5 +21,5 @@ Emscripten-provided libraries, in the Emscripten SDK).
 Build- and test-only tools (not shipped in the runtime): GoogleTest (BSD-3),
 FLTK (LGPL-2.1 with static-linking exception).
 
-No Jagged Alliance 2 game data (`Data/*.slf`) is included or distributed — that
+No Jagged Alliance 2 game data (`Data/*.slf`) is included or distributed - that
 content is commercial and must be supplied by the player from a copy they own.

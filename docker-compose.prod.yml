@@ -1,6 +1,6 @@
-# Production compose for ja2.virtastic.app — synced to /opt/ja2/ on the OVH VPS.
+# Production compose for ja2.virtastic.app - synced to /opt/ja2/ on the OVH VPS.
 # One static-serving container joined to the shared `nostalgia` docker network; the shared edge
-# Caddy (edge-caddy) reaches it by name (ja2:80). Publishes NO host ports — only the edge talks to
+# Caddy (edge-caddy) reaches it by name (ja2:80). Publishes NO host ports - only the edge talks to
 # it. Upload-only: no game data is hosted → no data volume. No database, no secrets → no env_file.
 services:
   ja2:

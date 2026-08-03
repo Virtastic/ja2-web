@@ -4,7 +4,7 @@ name: deploy-ovh (ja2.virtastic.app)
 # The runner executes ON the VPS with docker access, so steps use docker / docker compose directly.
 #
 # Prereqs on the box: the shared `edge-caddy` container + `nostalgia` network, and
-# /opt/edge/certs/virtastic.{crt,key} (the *.virtastic.app wildcard — already there for morrowind).
+# /opt/edge/certs/virtastic.{crt,key} (the *.virtastic.app wildcard - already there for morrowind).
 # The `ja2-builder:1` toolchain image is built on first run if missing (see the bootstrap step).
 on:
   push:
@@ -47,7 +47,7 @@ jobs:
         run: docker compose -f /opt/ja2/docker-compose.prod.yml up -d
 
       # Validate, then restart the shared edge to apply (admin API is disabled, so `caddy reload`
-      # can't be used — restart re-reads the Caddyfile; ~3s blip). Validate first to protect the
+      # can't be used - restart re-reads the Caddyfile; ~3s blip). Validate first to protect the
       # other sites on this edge.
       - name: Apply edge config
         run: |
@@ -64,10 +64,10 @@ jobs:
 
       # OPTIONAL edge-cache purge. The engine is content-versioned: each build's ja2.{js,wasm,data}
       # are moved into a unique e/<hash>/ dir (see play/index.html + wasm-build/version-engine.sh),
-      # so a new build is served at a fresh URL the CDN never cached — there is nothing stale to purge
+      # so a new build is served at a fresh URL the CDN never cached - there is nothing stale to purge
       # (index.html itself is served no-store). This step exists only as belt-and-suspenders when the
       # shared org secret CLOUDFLARE_API_TOKEN is available to this repo; otherwise it's a clean no-op.
-      # It purges the mutable HTML pointer by URL (plan-safe `files` — prefix/everything purges are
+      # It purges the mutable HTML pointer by URL (plan-safe `files` - prefix/everything purges are
       # Enterprise-only / would clobber the shared zone). index.html is already no-store, so this is
       # purely belt-and-suspenders.
       - name: Purge Cloudflare cache (optional)
@@ -77,7 +77,7 @@ jobs:
           CF_ZONE_ID: 875c5c671fa7e246307b9f70d56fc6e1   # virtastic.app zone id (not secret)
         run: |
           if [ -z "$CF_PURGE_TOKEN" ]; then
-            echo "CLOUDFLARE_API_TOKEN not available to this repo — skipping edge purge (optional: the engine is content-versioned, so nothing stale to purge)."
+            echo "CLOUDFLARE_API_TOKEN not available to this repo - skipping edge purge (optional: the engine is content-versioned, so nothing stale to purge)."
             exit 0
           fi
           resp=$(curl -sS -w '\n%{http_code}' -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
@@ -93,5 +93,5 @@ jobs:
           if [ "$code" = "200" ] && printf '%s' "$body" | grep -q '"success":true'; then
             echo "Edge cache purged for ja2.virtastic.app/."
           else
-            echo "::notice::Optional Cloudflare purge did not succeed (HTTP $code) — harmless, the engine is content-versioned. Check the token's Cache Purge permission if you want this green."
+            echo "::notice::Optional Cloudflare purge did not succeed (HTTP $code) - harmless, the engine is content-versioned. Check the token's Cache Purge permission if you want this green."
           fi

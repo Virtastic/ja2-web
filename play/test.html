@@ -24,7 +24,7 @@ var statusEl = document.getElementById('status');
 var subEl = document.getElementById('substatus');
 
 // Per-screen canvas presentation. The engine runs at ONE global internal
-// resolution (the browser size, see computeStartResolution) — but each screen is
+// resolution (the browser size, see computeStartResolution) - but each screen is
 // presented differently:
 //
 //  • BATTLE (tactical, GAME_SCREEN=5): the engine renders the whole framebuffer
@@ -33,7 +33,7 @@ var subEl = document.getElementById('substatus');
 //  • Every other screen (menu, laptop, A.I.M., strategic map, save/load…): the
 //    engine draws fixed 640x480 art CENTERED in the big framebuffer (STD_SCREEN
 //    offset). We zoom that centered 640x480 sub-region up to fill the window, so
-//    those screens look exactly as they did at native 640x480 — no black island.
+//    those screens look exactly as they did at native 640x480 - no black island.
 //
 // Only the canvas *element's* CSS box changes (framebuffer untouched). SDL2's
 // emscripten mouse handler maps  mx = targetX * window->w / cssW ; with the
@@ -48,7 +48,7 @@ function layoutCanvas(){
   // CRITICAL: put NO CSS size on the canvas until AFTER SDL has created its
   // window. Emscripten_CreateWindow probes the canvas CSS size and, if it already
   // has one (external_size) on a resizable window, sizes the backing store from
-  // CSS instead of the requested resolution — a feedback loop that collapses the
+  // CSS instead of the requested resolution - a feedback loop that collapses the
   // framebuffer. Gating on the boot flag keeps external_size=false at creation, so
   // the backing store = the resolution we asked for.
   if (!window.__ja2Booted) return;
@@ -76,7 +76,7 @@ function layoutCanvas(){
   c.style.setProperty('top',    top  + 'px', 'important');
   _fitBusy = false;
 }
-// onGameReady still calls fitCanvas() — keep the name as an alias.
+// onGameReady still calls fitCanvas() - keep the name as an alias.
 function fitCanvas(){ layoutCanvas(); }
 window.addEventListener('resize', layoutCanvas);
 (function watchCanvas(){
@@ -102,7 +102,7 @@ window.__ja2SetScreen = function(screen){
 // can't change resolution at runtime). fitCanvas() then scales the render up to
 // fill the browser window.
 //
-// DEFAULT = 640x480, the game's native UI resolution — menus, laptop, and
+// DEFAULT = 640x480, the game's native UI resolution - menus, laptop, and
 // cutscenes (all fixed-size 640x480 art) fill the frame, and fitCanvas() scales
 // the whole render up to fill the browser window: big and native.
 //
@@ -134,7 +134,7 @@ function computeStartResolution(){
 // Pre-create the Web Audio context BEFORE SDL opens audio. SDL2's emscripten
 // backend reuses Module.SDL2.audioContext if it already exists (else it calls a
 // bare `new AudioContext()`, which on some devices yields a low-latency
-// "interactive" context bound to a degraded mono / low-sample-rate device path —
+// "interactive" context bound to a degraded mono / low-sample-rate device path -
 // audio comes out garbled and blaring). Requesting a 48 kHz 'playback' context
 // (what media players use) routes game audio through the browser's normal
 // high-quality resampler regardless of the hardware device rate. SoundMan reads
@@ -189,7 +189,7 @@ var Module = {
       if (!cfg.game_dir || cfg.game_dir.indexOf('/some/place') === 0) cfg.game_dir = '/game/gamedata';
       cfg.res = computeStartResolution();
       // JA2's default "PERFECT" (pixel-perfect) scaling hard-errors when the
-      // game resolution exceeds the desktop/display size — which our auto-res
+      // game resolution exceeds the desktop/display size - which our auto-res
       // routinely does. LINEAR scaling has no such limit and scales any size
       // cleanly, so it's the right default in the browser. (Launcher can still
       // override to NEAR_PERFECT/PERFECT explicitly.)
@@ -204,7 +204,7 @@ var Module = {
   // calling exit()) tears the runtime down and would leave a dead black tab.
   // In the browser we'd rather restart: reload the page so the game boots back
   // to the main menu. Saves/config already persisted to IndexedDB, so nothing
-  // is lost. onAbort (a fatal error) is handled separately below — no reload
+  // is lost. onAbort (a fatal error) is handled separately below - no reload
   // loop there.
   onExit: function(){ restartGame('quit'); },
   onAbort: function(what){
@@ -235,7 +235,7 @@ function restartGame(reason){
       if (now - last < 4000){ n++; } else { n = 0; }
       sessionStorage.setItem('ja2_restart_ts', String(now));
       sessionStorage.setItem('ja2_restart_n', String(n));
-      if (n >= 3){                                   // looping — stop
+      if (n >= 3){                                   // looping - stop
         sessionStorage.removeItem('ja2_restart_n');
         statusEl.style.display = '';
         statusEl.innerHTML = 'Game exited (' + reason + ').<div class="sub">Reload the page to play again.</div>';
@@ -283,7 +283,7 @@ function startPump(){
     if (scheduled) return;
     scheduled = true;
     // Visible: pace to vsync via RAF. Hidden: RAF is throttled/stopped by the
-    // browser, so drive via MessageChannel — but cap to ~120Hz with a timer so
+    // browser, so drive via MessageChannel - but cap to ~120Hz with a timer so
     // a backgrounded tab keeps running without pinning a CPU core (RAF would
     // give 0fps; a bare postMessage loop gave ~200k fps).
     if (document.hidden) setTimeout(function(){ mc.port2.postMessage(0); }, 8);

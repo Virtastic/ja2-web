@@ -16,12 +16,12 @@ PRs are welcome. A few ground rules:
 - The port is **desktop Chrome/Chromium-only**; changes to support other
   browsers are out of scope unless they carry zero risk to the Chrome path.
 - Engine changes must be gated `#ifdef __EMSCRIPTEN__` so the desktop
-  Stracciatella code path stays intact — see
+  Stracciatella code path stays intact - see
   [`WASM_ADAPTATIONS.md`](WASM_ADAPTATIONS.md) for the house style.
 - By contributing you agree your work is licensed under **GPL-3.0-or-later**
   like the rest of the project.
 - Build instructions are in the [README](README.md). A PR that can't be built
-  isn't dead on arrival — CI/deploy runs are maintainer-only, so a maintainer
+  isn't dead on arrival - CI/deploy runs are maintainer-only, so a maintainer
   will build and test your change.
 
 ## What maintainers handle

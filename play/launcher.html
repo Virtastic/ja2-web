@@ -215,7 +215,7 @@
   </div>
 
   <div class="cards">
-    <!-- HOSTED DATA — revealed by JS only when the server actually serves ja2-gamedata.js -->
+    <!-- HOSTED DATA - revealed by JS only when the server actually serves ja2-gamedata.js -->
     <div class="card actionable reveal d3" id="card-hosted" role="button" tabindex="0" hidden>
       <div class="glyph" aria-hidden="true">
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -226,7 +226,7 @@
       </div>
       <div class="kicker">Hosted here</div>
       <h2>Play now</h2>
-      <p class="lead">The game data is served from this site — <b>nothing to install or upload</b>. Just
+      <p class="lead">The game data is served from this site - <b>nothing to install or upload</b>. Just
          click and play.</p>
       <p class="micro">Best on a fast connection: the data downloads once, then caches.</p>
       <div class="go">Play now <span class="arw">▸</span></div>
@@ -279,49 +279,49 @@
    <div class="m-kicker">Your copy &middot; nothing is uploaded</div>
    <h3 id="modal-title">Bring your own JA2</h3>
    <p>Own Jagged Alliance 2? Point the browser at your installed copy and it plays in-engine, reading
-      files straight from your disk — <b>no upload, no copy to a server</b>. Here's the whole flow.</p>
+      files straight from your disk - <b>no upload, no copy to a server</b>. Here's the whole flow.</p>
 
    <h4>1 · Find your JA2 folder</h4>
    <p>You need a legal install of <b>JA2 Gold</b>. Pick the game folder, or its <code>Data</code>
-      subfolder — the one holding the <code>.slf</code> archives (<code>DATA.SLF</code>,
+      subfolder - the one holding the <code>.slf</code> archives (<code>DATA.SLF</code>,
       <code>MAPS.SLF</code>, <code>TILESETS.SLF</code> …):</p>
    <ul>
-     <li><b>GOG</b> — <code>C:\\GOG Games\\Jagged Alliance 2 Gold</code></li>
-     <li><b>Steam</b> — <code>...\\steamapps\\common\\Jagged Alliance 2 Gold</code>
+     <li><b>GOG</b> - <code>C:\\GOG Games\\Jagged Alliance 2 Gold</code></li>
+     <li><b>Steam</b> - <code>...\\steamapps\\common\\Jagged Alliance 2 Gold</code>
          (Steam → right-click the game → Manage → Browse local files)</li>
-     <li><b>Disc / other</b> — wherever you installed it.</li>
+     <li><b>Disc / other</b> - wherever you installed it.</li>
    </ul>
 
    <h4>2 · Let the browser open it</h4>
    <p>Click <b>Choose your JA2 folder</b>, select it, and when Chrome asks to <b>edit</b> the folder
-      choose <b>Edit files</b>. Nothing leaves your machine — this lets the engine read your game data
+      choose <b>Edit files</b>. Nothing leaves your machine - this lets the engine read your game data
       on demand and write your saves back to the folder (see below). Your pick is remembered for next
       time.</p>
 
    <h4>Your saves live on disk</h4>
    <p>Saved games are written to a <code>ja2-web-saves</code> folder <b>inside the folder you picked</b>
-      — real files on your drive, <b>not</b> in the browser. Clearing your browser history or cache
+      - real files on your drive, <b>not</b> in the browser. Clearing your browser history or cache
       won't touch them, they're there next time you play, and you can back them up or copy them like
       any other file. (This is why Chrome asks to <b>edit</b> the folder, not just view it.)</p>
 
    <h4>What runs</h4>
    <p>Plain <b>vanilla JA2 (Gold)</b>. If your copy is <b>Wildfire</b> or a <b>1.13 / modded</b> install
-      it will still load, but runs as vanilla — mod content isn't loaded, and it may glitch. The
+      it will still load, but runs as vanilla - mod content isn't loaded, and it may glitch. The
       launcher tells you if it spots one.</p>
 
    <h4>Requirements &amp; privacy</h4>
    <ul>
-     <li><b>Chromium browser on desktop</b> (Chrome, Edge, Brave) — this uses the File System Access
+     <li><b>Chromium browser on desktop</b> (Chrome, Edge, Brave) - this uses the File System Access
          API, which Firefox and Safari don't support.</li>
-     <li><b>Nothing is uploaded.</b> The game reads your data and writes your saves on your own disk —
+     <li><b>Nothing is uploaded.</b> The game reads your data and writes your saves on your own disk -
          no copy is stored on any server.</li>
    </ul>
 
    <h4>If something's off</h4>
    <ul>
-     <li><b>"Doesn't look like a JA2 install"</b> — pick the folder that contains <code>Data</code>
+     <li><b>"Doesn't look like a JA2 install"</b> - pick the folder that contains <code>Data</code>
          with the <code>.slf</code> archives (or the <code>Data</code> folder itself).</li>
-     <li><b>Edit access denied</b> — reopen the picker and choose <b>Edit files</b> (needed so saves
+     <li><b>Edit access denied</b> - reopen the picker and choose <b>Edit files</b> (needed so saves
          can be written to the folder).</li>
    </ul>`;
  (function(){
@@ -399,7 +399,7 @@
      }
      // Grant read permission while we still hold the user gesture, then remember the handle.
      if ((await picked.requestPermission({ mode:'readwrite' })) !== 'granted'){
-       note('Edit access was declined — it’s needed so your saved games can be written to the folder. Reopen and choose “Edit files”.','err'); return;
+       note('Edit access was declined - it’s needed so your saved games can be written to the folder. Reopen and choose “Edit files”.','err'); return;
      }
      const meta = { resversion:'ENGLISH', wildfire:scan.wildfire, mod113:scan.has113, name:picked.name||'JA2' };
      await idbSet(KEY, picked);
@@ -425,7 +425,7 @@
 
  // --- Hosted-data card: reveal only if the server actually hosts the game-data COPY.
  // index.html (no query) loads ja2-gamedata.js, which in turn fetches the big
- // ja2-gamedata.data blob — so we probe the .data (the real payload) AND the .js loader.
+ // ja2-gamedata.data blob - so we probe the .data (the real payload) AND the .js loader.
  // Both must be present or the boot fails. Absent (public upload-only deploy) → stay hidden. ---
  (async function(){
    try {
@@ -444,7 +444,7 @@
    const local = $('card-local'); if (local) local.hidden = true;
    const cont  = $('continue');   if (cont)  cont.classList.remove('show');
    const deck  = $('deck');       if (deck)  deck.textContent =
-     'Assemble your squad and liberate Arulco, running right here in your browser — no install, no upload.';
+     'Assemble your squad and liberate Arulco, running right here in your browser - no install, no upload.';
  })();
 
  // --- Return-visit fast path ---
@@ -459,7 +459,7 @@
    $('continue-btn').addEventListener('click', async ()=>{
      try {
        if (perm!=='granted') perm = await handle.requestPermission({ mode:'readwrite' });
-       if (perm!=='granted'){ note('Edit access was declined — it’s needed to save your games to the folder. Choose “Edit files”.','err'); return; }
+       if (perm!=='granted'){ note('Edit access was declined - it’s needed to save your games to the folder. Choose “Edit files”.','err'); return; }
        location.href='index.html?src=local';
      } catch(e){ note('Could not reopen that folder. Pick it again.','err'); }
    });

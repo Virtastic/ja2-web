@@ -20,8 +20,8 @@ export JA2_CARGO_ARGS="-Zbuild-std=std,panic_abort"
 # check_validity, which THROWS ST::unicode_error (→ hard abort) on any string with
 # an invalid UTF sequence. Odd/older data (e.g. the JA2 demo's mis-encoded strings)
 # then crashes the engine at content load. substitute_invalid replaces the bad
-# code unit instead of throwing — strictly more permissive, never worse for valid
-# data — which is the right default for a browser port fed arbitrary game folders.
+# code unit instead of throwing - strictly more permissive, never worse for valid
+# data - which is the right default for a browser port fed arbitrary game folders.
 # -msimd128: wasm SIMD for the software blitters (8bpp→16bpp palette blits are the
 # hottest per-frame code); pure compiler auto-vectorization, Chrome-supported for years.
 export JA2_COMMON_FLAGS="-pthread -fexceptions -O2 -msimd128 -DST_DEFAULT_VALIDATION=ST::substitute_invalid"

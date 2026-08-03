@@ -73,7 +73,7 @@ var subEl = document.getElementById('substatus');
 var ldStatusEl = document.getElementById('ld-status');
 var ldFillEl = document.getElementById('ld-fill');
 // Drive the themed loading overlay from an emscripten status string such as
-// "Downloading data... (1234/56789)" — fill the progress bar and show MB.
+// "Downloading data... (1234/56789)" - fill the progress bar and show MB.
 function setLoading(t){
   if (!t) return;
   var m = t.match(/\((\d+)\/(\d+)\)/);
@@ -88,7 +88,7 @@ function setLoading(t){
 }
 
 // Per-screen canvas presentation. The engine runs at ONE global internal
-// resolution (the browser size, see computeStartResolution) — but each screen is
+// resolution (the browser size, see computeStartResolution) - but each screen is
 // presented differently:
 //
 //  • BATTLE (tactical, GAME_SCREEN=5): the engine renders the whole framebuffer
@@ -97,7 +97,7 @@ function setLoading(t){
 //  • Every other screen (menu, laptop, A.I.M., strategic map, save/load…): the
 //    engine draws fixed 640x480 art CENTERED in the big framebuffer (STD_SCREEN
 //    offset). We zoom that centered 640x480 sub-region up to fill the window, so
-//    those screens look exactly as they did at native 640x480 — no black island.
+//    those screens look exactly as they did at native 640x480 - no black island.
 //
 // Only the canvas *element's* CSS box changes (framebuffer untouched). SDL2's
 // emscripten mouse handler maps  mx = targetX * window->w / cssW ; with the
@@ -112,7 +112,7 @@ function layoutCanvas(){
   // CRITICAL: put NO CSS size on the canvas until AFTER SDL has created its
   // window. Emscripten_CreateWindow probes the canvas CSS size and, if it already
   // has one (external_size) on a resizable window, sizes the backing store from
-  // CSS instead of the requested resolution — a feedback loop that collapses the
+  // CSS instead of the requested resolution - a feedback loop that collapses the
   // framebuffer. Gating on the boot flag keeps external_size=false at creation, so
   // the backing store = the resolution we asked for.
   if (!window.__ja2Booted) return;
@@ -140,7 +140,7 @@ function layoutCanvas(){
   c.style.setProperty('top',    top  + 'px', 'important');
   _fitBusy = false;
 }
-// onGameReady still calls fitCanvas() — keep the name as an alias.
+// onGameReady still calls fitCanvas() - keep the name as an alias.
 function fitCanvas(){ layoutCanvas(); }
 window.addEventListener('resize', layoutCanvas);
 (function watchCanvas(){
@@ -195,13 +195,13 @@ function computeStartResolution(){
 // Pre-create the Web Audio context BEFORE SDL opens audio. SDL2's emscripten
 // backend reuses Module.SDL2.audioContext if it already exists (else it calls a
 // bare `new AudioContext()`, which on some devices yields a low-latency
-// "interactive" context bound to a degraded mono / low-sample-rate device path —
+// "interactive" context bound to a degraded mono / low-sample-rate device path -
 // audio comes out garbled and blaring). Requesting a 48 kHz 'playback' context
 // (what media players use) routes game audio through the browser's normal
 // high-quality resampler regardless of the hardware device rate. SoundMan reads
 // back this context's sample rate, so decoders target it correctly.
-// A mono (1-channel) output device — e.g. a Bluetooth headset in hands-free/HFP
-// mode — leaves the AudioContext destination in an INVALID state: channelCount=2
+// A mono (1-channel) output device - e.g. a Bluetooth headset in hands-free/HFP
+// mode - leaves the AudioContext destination in an INVALID state: channelCount=2
 // (default stereo) with channelCountMode 'explicit' but maxChannelCount=1. The
 // engine's stereo output is then forced through a 1-channel device, which comes
 // out garbled/clipped. Clamp the destination to the device's real channel count
@@ -233,14 +233,14 @@ function presetAudioContext(){
 // Mirror JA2's saved games to/from a dedicated ja2-web-saves subfolder INSIDE the player's chosen
 // folder, so saves live ON DISK and survive clearing browser data (like the desktop game). The folder
 // is the authoritative copy; IDBFS is just a working cache. JA2 writes saves to <home>/.ja2/SavedGames
-// (SAVED_GAME_DIR under the stracciatella home) — here HOME=/userdata, so /userdata/.ja2/SavedGames.
+// (SAVED_GAME_DIR under the stracciatella home) - here HOME=/userdata, so /userdata/.ja2/SavedGames.
 var __folderSaves = null, __mirrored = {}, __mirroring = false, __mirrorAgain = false;
 var __JA2_SAVES = '/userdata/.ja2/SavedGames';
 async function setupFolderSaves(dir){
   if (!dir) return;
   var perm='prompt'; try { perm = await dir.queryPermission({mode:'readwrite'}); } catch(e){}
   if (perm !== 'granted'){ try { perm = await dir.requestPermission({mode:'readwrite'}); } catch(e){} }
-  if (perm !== 'granted'){ console.warn('[saves] folder is read-only — saves stay in browser storage this session'); return; }
+  if (perm !== 'granted'){ console.warn('[saves] folder is read-only - saves stay in browser storage this session'); return; }
   var sh; try { sh = await dir.getDirectoryHandle('ja2-web-saves', {create:true}); }
   catch(e){ console.warn('[saves] could not open ja2-web-saves in your folder', e); return; }
   try { FS.mkdirTree(__JA2_SAVES); } catch(e){}
@@ -284,7 +284,7 @@ window.__mirrorSaves = mirrorSavesToFolder;
 // ?src=local: copy the player's OWN Jagged Alliance 2 "Data" folder (picked in
 // launcher.html and remembered as a FileSystemDirectoryHandle) into MEMFS at
 // /owndata/data. The engine's VFS then reads the SLF archives from there
-// (game_dir=/owndata) — no bundled data package is loaded in this mode. Returns
+// (game_dir=/owndata) - no bundled data package is loaded in this mode. Returns
 // the launcher's stored meta ({resversion, wildfire}); throws a user-facing
 // message on failure so the caller can bounce back to the chooser.
 async function mountOwnDataFolder(){
@@ -309,7 +309,7 @@ async function mountOwnDataFolder(){
     if (perm !== 'granted') throw new Error('Read permission is not granted');
   }
 
-  // Users may pick the install root or the Data folder itself — descend if present.
+  // Users may pick the install root or the Data folder itself - descend if present.
   var dataDir = dir;
   for await (const ent of dir.entries())
     if (ent[1].kind==='directory' && ent[0].toLowerCase()==='data'){ dataDir = ent[1]; break; }
@@ -397,7 +397,7 @@ var Module = {
             statusEl.classList.remove('hide', 'indet');
             statusEl.classList.add('err');
             if (ldStatusEl) ldStatusEl.textContent = 'Could not read your JA2 folder';
-            subEl.textContent = (e && e.message || e) + ' — returning to the chooser…';
+            subEl.textContent = (e && e.message || e) + ' - returning to the chooser…';
             setTimeout(function(){ location.href = 'launcher.html'; }, 2600);
             return;   // leave idbfs-restore held: never half-boot with no data
           }
@@ -408,7 +408,7 @@ var Module = {
 
         cfg.res = computeStartResolution();
         // JA2's default "PERFECT" (pixel-perfect) scaling hard-errors when the
-        // game resolution exceeds the desktop/display size — which our auto-res
+        // game resolution exceeds the desktop/display size - which our auto-res
         // routinely does. LINEAR scales any size cleanly, so it's the browser default.
         if (!cfg.scaling) cfg.scaling = 'LINEAR';
         FS.writeFile('/userdata/.ja2/ja2.json', JSON.stringify(cfg, null, 2));
@@ -422,7 +422,7 @@ var Module = {
   // calling exit()) tears the runtime down and would leave a dead black tab.
   // In the browser we'd rather restart: reload the page so the game boots back
   // to the main menu. Saves/config already persisted to IndexedDB, so nothing
-  // is lost. onAbort (a fatal error) is handled separately below — no reload
+  // is lost. onAbort (a fatal error) is handled separately below - no reload
   // loop there.
   onExit: function(){ restartGame('quit'); },
   onAbort: function(what){
@@ -454,7 +454,7 @@ function restartGame(reason){
       if (now - last < 4000){ n++; } else { n = 0; }
       sessionStorage.setItem('ja2_restart_ts', String(now));
       sessionStorage.setItem('ja2_restart_n', String(n));
-      if (n >= 3){                                   // looping — stop
+      if (n >= 3){                                   // looping - stop
         sessionStorage.removeItem('ja2_restart_n');
         statusEl.style.display = '';
         statusEl.innerHTML = 'Game exited (' + reason + ').<div class="sub">Reload the page to play again.</div>';
@@ -505,7 +505,7 @@ function startPump(){
     if (scheduled) return;
     scheduled = true;
     // Visible: pace to vsync via RAF. Hidden: RAF is throttled/stopped by the
-    // browser, so drive via MessageChannel — but cap to ~120Hz with a timer so
+    // browser, so drive via MessageChannel - but cap to ~120Hz with a timer so
     // a backgrounded tab keeps running without pinning a CPU core (RAF would
     // give 0fps; a bare postMessage loop gave ~200k fps).
     if (document.hidden) setTimeout(function(){ mc.port2.postMessage(0); }, 8);
@@ -569,9 +569,9 @@ Module.onGameReady = function(){ window.__ja2Booted = true; startPump(); layoutC
 </script>
 <script>
 // Data source depends on how the chooser (launcher.html) sent us here:
-//  • ?src=local — the player's own JA2 "Data" folder is copied into MEMFS in
-//    preRun; no bundled package is loaded (that's the whole point — no download).
-//  • default — load the bundled sample data package. It hooks
+//  • ?src=local - the player's own JA2 "Data" folder is copied into MEMFS in
+//    preRun; no bundled package is loaded (that's the whole point - no download).
+//  • default - load the bundled sample data package. It hooks
 //    Module.addRunDependency, so it MUST run before ja2.js.
 (function(){
   function load(src, cb, errCb){ var s=document.createElement('script'); s.src=src; if(cb) s.onload=cb; if(errCb) s.onerror=errCb; document.body.appendChild(s); }
@@ -583,7 +583,7 @@ Module.onGameReady = function(){ window.__ja2Booted = true; startPump(); layoutC
       // non-src=local entry can't boot. Send the visitor to the chooser instead
       // of hanging forever on the loading screen.
       var el = document.getElementById('ld-status');
-      if (el) el.textContent = 'No bundled game data here — taking you to the chooser…';
+      if (el) el.textContent = 'No bundled game data here - taking you to the chooser…';
       setTimeout(function(){ location.href = 'launcher.html'; }, 1800);
     });
 })();

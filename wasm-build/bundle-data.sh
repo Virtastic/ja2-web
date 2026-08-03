@@ -13,4 +13,4 @@ rsync -a --delete "$DATA_DIR/" "$JA2WEB_ROOT/gamedata-src/gamedata/data/"
 du -sh "$JA2WEB_ROOT/gamedata-src/gamedata"
 # Repackage the standalone game-data package (no relink needed).
 "$(dirname "$0")/package-data.sh"
-echo "Done — reload the browser page."
+echo "Done - reload the browser page."

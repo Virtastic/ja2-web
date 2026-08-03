@@ -1,4 +1,4 @@
-# Edge vhost for ja2.virtastic.app — deployed as a drop-in into the shared edge Caddy's sites dir
+# Edge vhost for ja2.virtastic.app - deployed as a drop-in into the shared edge Caddy's sites dir
 # (on the VPS: /opt/edge/sites/ja2.caddy; imported by /opt/edge/Caddyfile via `import sites/*.caddy`).
 # The shared edge terminates TLS with the *.virtastic.app Cloudflare Origin cert (same wildcard cert
 # that already fronts morrowind) and reverse-proxies to the ja2 container by name on the shared net.
@@ -6,7 +6,7 @@
 # The container's own nginx already sets COOP/COEP/CORP (required for SharedArrayBuffer/pthreads);
 # those response headers pass through this reverse_proxy. So this vhost deliberately does NOT set
 # them again (duplicate COOP/COEP breaks crossOriginIsolated) and does NOT `encode` (Cloudflare
-# compresses the raw wasm/data at the edge). No `import inject` — greenfield, no origin guard.
+# compresses the raw wasm/data at the edge). No `import inject` - greenfield, no origin guard.
 ja2.virtastic.app {
 	tls /certs/virtastic.crt /certs/virtastic.key
 	import sec_headers

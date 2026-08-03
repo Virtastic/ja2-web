@@ -1,5 +1,5 @@
 # Keep the build context small + reproducible. The image builds the engine from source-ja2 and
-# ships only the tracked static play/*.html — never the huge data blobs or local build trees.
+# ships only the tracked static play/*.html - never the huge data blobs or local build trees.
 .git
 **/build-wasm/
 build-wasm/
@@ -12,7 +12,7 @@ gamedata-src/
 gamedata-lean/
 fsroot/gamedata/
 
-# Bulky community mods that aren't in git either (kept out of ja2.data — not needed to run;
+# Bulky community mods that aren't in git either (kept out of ja2.data - not needed to run;
 # restore from upstream stracciatella if wanted). Keeps the preloaded data blob lean.
 fsroot/mods/simplified-chinese-localization/
 fsroot/mods/o-fortuna/

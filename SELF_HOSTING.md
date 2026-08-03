@@ -1,7 +1,7 @@
 # Self-hosting ja2-web
 
 Grab `ja2-web-<tag>.zip` from
-[Releases](https://github.com/Virtastic/ja2-web/releases) — it contains the
+[Releases](https://github.com/Virtastic/ja2-web/releases) - it contains the
 prebuilt engine and everything below. No compiler needed.
 
 ## Quick start (local)
@@ -19,7 +19,7 @@ docker compose up           # http://localhost:8080
 ```
 
 Open the URL in **desktop Chrome/Chromium**. The launcher (`launcher.html`) lets
-players read their own legally-owned JA2 Gold `Data` folder straight from disk —
+players read their own legally-owned JA2 Gold `Data` folder straight from disk -
 no game data is shipped.
 
 ## Serving the game data yourself (optional)
@@ -34,8 +34,8 @@ wasm-build/bundle-data.sh ~/path/to/ja2install   # → play/ja2-gamedata.{js,dat
 ```
 
 When those files are present, the launcher detects them and shows a **"Play now
-— hosted here"** card (a `HEAD` probe of `ja2-gamedata.js`). When absent — the
-default upload-only deploy — the card stays hidden and the launcher is
+- hosted here"** card (a `HEAD` probe of `ja2-gamedata.js`). When absent - the
+default upload-only deploy - the card stays hidden and the launcher is
 bring-your-own-only. Nothing else to configure.
 
 > Jagged Alliance 2 data is commercial. Only host it where you have the right to
@@ -54,14 +54,14 @@ Cross-Origin-Resource-Policy: cross-origin
 
 Plus:
 
-- **HTTPS** (or `http://localhost`) — isolation is only granted on secure origins.
+- **HTTPS** (or `http://localhost`) - isolation is only granted on secure origins.
 - `application/wasm` MIME type for `.wasm`.
 - Serve the precompressed `.gz` siblings with `Content-Encoding: gzip` when the
-  client accepts it — this turns the ~10 MB wasm into ~3 MB over the wire (the
+  client accepts it - this turns the ~10 MB wasm into ~3 MB over the wire (the
   `.js` loader and preloaded `.data` blob compress too). (`server.py` and the
   nginx config do this.)
 - The engine files are content-versioned into `e/<hash>/`, so long cache
-  lifetimes are always safe — a new build lands at a fresh URL; no purge needed.
+  lifetimes are always safe - a new build lands at a fresh URL; no purge needed.
 
 ### nginx
 
@@ -97,7 +97,7 @@ example.com {
 }
 ```
 
-Static hosts (Netlify, Cloudflare Pages, …) work too — set the same three
+Static hosts (Netlify, Cloudflare Pages, …) work too - set the same three
 headers in the host's headers config.
 
 ## Browser support
@@ -109,9 +109,9 @@ Desktop Chrome/Chromium/Edge/Brave only (SharedArrayBuffer + WebAssembly threads
 
 The bundle is GPLv3 (see `LICENSE`, `NOTICE`, `THIRD-PARTY-LICENSES.md`). If you
 host it, link to the source (this repository or the matching
-`ja2-web-src-<tag>.tar.gz`) somewhere reasonable — the included pages already do
+`ja2-web-src-<tag>.tar.gz`) somewhere reasonable - the included pages already do
 this in their footers, so leaving them intact is enough. Jagged Alliance 2 game
 data is **not** included and must never be bundled by hosts either.
 
 ---
-WASM port © 2025–2026 [Virtastic](https://virtastic.app) — GPL-3.0-or-later
+WASM port © 2025-2026 [Virtastic](https://virtastic.app) - GPL-3.0-or-later

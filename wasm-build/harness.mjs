@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Headless-Chrome CDP driver for the JA2 wasm port — independent of the
+// Headless-Chrome CDP driver for the JA2 wasm port - independent of the
 // claude-in-chrome extension. Persistent Chrome on a debug port; each
 // invocation connects, runs one command, disconnects.
 //
@@ -78,7 +78,7 @@ if (cmd === 'wipe') {
 
 if (cmd === 'launch') {
   const url = process.argv[3] || 'http://localhost:8790/test.html';
-  // NB: profile is NOT wiped here — localStorage (crash log) must survive a
+  // NB: profile is NOT wiped here - localStorage (crash log) must survive a
   // renderer crash so we can read it after relaunch. Use `wipe` explicitly.
   // HEADED (not --headless): headless Chrome's SharedArrayBuffer/pthreads path
   // is flaky and hard-crashes the renderer; a real headed window is as stable

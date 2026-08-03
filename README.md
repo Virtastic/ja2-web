@@ -18,7 +18,7 @@
 
 ja2-web is a WebAssembly build of [JA2 Stracciatella](https://ja2-stracciatella.github.io/),
 the open-source engine for *Jagged Alliance 2*. It is cross-compiled with Emscripten so
-the whole engine — tactical combat, the strategic map, the laptop, sound — runs
+the whole engine - tactical combat, the strategic map, the laptop, sound - runs
 client-side in a desktop browser. There is no plugin and no streaming service. The
 engine runs locally and reads game data from your machine.
 
@@ -47,8 +47,8 @@ be backed up like any other file. Config and the game log persist in the browser
 (IndexedDB) and survive reloads. A themed loading screen shows real mount progress on
 the way in.
 
-The tactical (battle) screen renders at your full browser resolution — more of the
-sector is visible than the classic 640×480 — while the fixed-art screens (menu, laptop,
+The tactical (battle) screen renders at your full browser resolution - more of the
+sector is visible than the classic 640×480 - while the fixed-art screens (menu, laptop,
 A.I.M., strategic map) keep their original look. Add `?res=classic` to force
 640×480-everywhere.
 
@@ -73,7 +73,7 @@ locally.
 ### Not included (kept local)
 
 - `gamedata-src/`, `gamedata-lean/`, `fsroot/gamedata/`, `play/ja2*.data`: commercial
-  JA2 game data (`Data/*.slf`). Never committed — copyright.
+  JA2 game data (`Data/*.slf`). Never committed - copyright.
 - `build-wasm/` and all `*.wasm` / `*.data` build outputs.
 - Prebuilt desktop SDL2 binaries and bulky community mods (get them from upstream
   Stracciatella if you need them).
@@ -102,7 +102,7 @@ the data chooser.
 
 You need **Emscripten 6.0.1**, a **Rust nightly** toolchain, CMake, and Ninja. The exact
 pins live in [`wasm-build/env.sh`](wasm-build/env.sh) (a mismatched Rust nightly
-miscompiles `std::path` on `wasm32-unknown-emscripten` — do not drift off the pin).
+miscompiles `std::path` on `wasm32-unknown-emscripten` - do not drift off the pin).
 
 ```bash
 wasm-build/configure-ja2.sh                  # emcmake cmake -S source-ja2 -B build-wasm
@@ -114,7 +114,7 @@ Things to watch, which is why the flags are scripted in `env.sh`:
 
 - The whole build uses `-fexceptions` (JS exceptions, the rustc emscripten ABI) and
   `-pthread`. Do **not** add `-flto`.
-- `-sSTACK_SIZE=8388608` (8 MB) — the world-map loader overflows the default 64 KB wasm
+- `-sSTACK_SIZE=8388608` (8 MB) - the world-map loader overflows the default 64 KB wasm
   stack.
 - `-msimd128` (C++ and Rust `+simd128`) vectorizes the software blitters.
 - Audio defaults to a Wasm AudioWorklet backend; `?audio=legacy` selects the old
@@ -146,7 +146,7 @@ To run your own instance without building anything, grab a
 ## Browser support
 
 Requires SharedArrayBuffer + WebAssembly threads (pthreads) and the File System Access
-API — desktop **Chrome / Chromium / Edge / Brave**. Firefox and Safari are not
+API - desktop **Chrome / Chromium / Edge / Brave**. Firefox and Safari are not
 supported. Mobile and touch are out of scope (no on-screen controls).
 
 ## License
@@ -160,7 +160,7 @@ full text is in [`LICENSE`](LICENSE).
 - The front-end and tooling (`play/`, `wasm-build/`, `fsroot/` config, scripts) is
   released under the same GPLv3.
 - Bundled dependencies keep their own licenses (SDL2, miniaudio, string_theory, and the
-  rest) — see [`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md).
+  rest) - see [`THIRD-PARTY-LICENSES.md`](THIRD-PARTY-LICENSES.md).
 
 ### Game data and trademarks
 
@@ -172,11 +172,11 @@ copyrighted assets.
 
 ## Community
 
-- **[Discord](https://discord.gg/PzFfDkbSue)** — the fastest place for help, screenshots,
+- **[Discord](https://discord.gg/PzFfDkbSue)** - the fastest place for help, screenshots,
   and news.
-- **[YouTube (@Virtastic-Apps)](https://www.youtube.com/@Virtastic-Apps)** — demos, build
+- **[YouTube (@Virtastic-Apps)](https://www.youtube.com/@Virtastic-Apps)** - demos, build
   logs, and other native-to-browser ports we're working on.
-- **[GitHub Discussions](https://github.com/Virtastic/ja2-web/discussions)** — longer-form
+- **[GitHub Discussions](https://github.com/Virtastic/ja2-web/discussions)** - longer-form
   questions and showcase threads.
 
 Found a bug or want a feature? Open an [Issue](https://github.com/Virtastic/ja2-web/issues).

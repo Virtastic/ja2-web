@@ -4,7 +4,7 @@ source-ja2/build*/
 **/target/
 **/__pycache__/
 
-# ---- Commercial JA2 game data — NOT distributable (copyright) ----
+# ---- Commercial JA2 game data - NOT distributable (copyright) ----
 # Only the engine source was ever released; the Data/*.slf archives are commercial.
 gamedata-src/
 gamedata-lean/
@@ -36,14 +36,14 @@ play/.env
 # ---- OS cruft ----
 .DS_Store
 
-# Prebuilt DESKTOP SDL2 binaries (Windows/Mac/VC) — unused by the wasm build,
+# Prebuilt DESKTOP SDL2 binaries (Windows/Mac/VC) - unused by the wasm build,
 # which uses Emscripten's SDL2 port. ~108M of dead weight; get them from upstream
 # stracciatella if you ever need a native desktop build.
 source-ja2/dependencies/lib-SDL2-2.0.20-mingw/
 source-ja2/dependencies/lib-SDL2-2.0.20-VC/
 source-ja2/dependencies/lib-SDL2-2.0.20-macos/
 
-# Bulky example/community mods — not needed to run the port (the mod system is
+# Bulky example/community mods - not needed to run the port (the mod system is
 # demonstrated by the small mods kept in fsroot/mods/). Restore from upstream
 # stracciatella if wanted.
 source-ja2/assets/mods/
@@ -52,7 +52,7 @@ fsroot/mods/o-fortuna/
 play/testdata
 
 # Terraform: state can contain sensitive values; provider plugins + lockfile are
-# machine-local. Never commit these — infra is applied manually (see infra/terraform/README.md).
+# machine-local. Never commit these - infra is applied manually (see infra/terraform/README.md).
 infra/terraform/.terraform/
 infra/terraform/*.tfstate
 infra/terraform/*.tfstate.*

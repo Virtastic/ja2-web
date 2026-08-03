@@ -3,9 +3,9 @@
 # Per-push deploy image for ja2.virtastic.app.
 #  - builder stage: incremental JA2→WASM build (FROM the prebaked ja2-builder image).
 #  - runtime stage: nginx:alpine serving the web root with the app's serving contract
-#    (infra/nginx.conf — COOP/COEP/CORP for SharedArrayBuffer, launcher gate, immutable caching).
+#    (infra/nginx.conf - COOP/COEP/CORP for SharedArrayBuffer, launcher gate, immutable caching).
 # Built + tagged `ja2:ovh` by .github/workflows/deploy-ovh.yml on the Virtastic self-hosted runner.
-# UPLOAD-ONLY: no game data is shipped — the launcher's bring-your-own path (index.html?src=local)
+# UPLOAD-ONLY: no game data is shipped - the launcher's bring-your-own path (index.html?src=local)
 # is the only way in, so ja2-gamedata.*/ja2-lean.* are deliberately NOT copied.
 # =============================================================================================
 
@@ -18,13 +18,13 @@ WORKDIR /build
 COPY source-ja2 /build/source-ja2
 COPY fsroot     /build/fsroot
 COPY wasm-build /build/wasm-build
-# NOTE: the static play/*.html are copied in the RUNTIME stage (from context), NOT here — editing
+# NOTE: the static play/*.html are copied in the RUNTIME stage (from context), NOT here - editing
 # them must not invalidate this compile layer and trigger a full recompile.
 
 # configure → compile+link (emits ja2.{js,wasm,data}) → stage into play/. Cache mounts keep re-runs
 # incremental: build-wasm (cmake+ninja objects), the cargo registry/git (crate downloads), and the
-# Rust target dir (build-std artifacts — the slow part; target/ is gitignored so masking is safe).
-# Distinct cache `id`s — BuildKit keys cache mounts by id (default = target path), and the sibling
+# Rust target dir (build-std artifacts - the slow part; target/ is gitignored so masking is safe).
+# Distinct cache `id`s - BuildKit keys cache mounts by id (default = target path), and the sibling
 # morrowind image mounts the SAME target=/build/build-wasm on this shared runner. Without unique ids
 # the two projects' cmake caches collide ("source does not match ... used to generate cache").
 RUN --mount=type=cache,id=ja2-build-wasm,target=/build/build-wasm \
@@ -33,8 +33,8 @@ RUN --mount=type=cache,id=ja2-build-wasm,target=/build/build-wasm \
     --mount=type=cache,id=ja2-rust-target,target=/build/source-ja2/rust/target \
 # source-ja2/assets/mods is gitignored (40 MB of community mods), so it's absent in a clean checkout
 # and cmake's desktop-only "copy assets next to the binary" post-build step errors on it. The WASM
-# build doesn't use that copy — game data is preloaded from fsroot@/game (with its own fsroot/mods)
-# — so an empty dir satisfies the copy without bloating the image.
+# build doesn't use that copy - game data is preloaded from fsroot@/game (with its own fsroot/mods)
+# - so an empty dir satisfies the copy without bloating the image.
     mkdir -p source-ja2/assets/mods \
  && bash wasm-build/configure-ja2.sh \
  && . wasm-build/env.sh && ninja -C build-wasm ja2 \
@@ -54,7 +54,7 @@ COPY play/index.html play/launcher.html play/settings.html /usr/share/nginx/html
 # Gameplay trailer (web-optimized 1080p H.264, faststart; converted from ja2-mov.mov).
 COPY play/ja2-mov.mp4 /usr/share/nginx/html/
 # Built engine artifacts from the builder stage, with their .gz siblings for
-# nginx gzip_static. (No ja2-gamedata.*/ja2-lean.* — upload-only.)
+# nginx gzip_static. (No ja2-gamedata.*/ja2-lean.* - upload-only.)
 COPY --from=builder /build/play/ja2.js      /usr/share/nginx/html/
 COPY --from=builder /build/play/ja2.js.gz   /usr/share/nginx/html/
 COPY --from=builder /build/play/ja2.wasm    /usr/share/nginx/html/

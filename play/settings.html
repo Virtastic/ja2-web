@@ -121,7 +121,7 @@
 
   <div class="tab" id="tab-logs">
     <div class="note">You can view the logs of the latest JA2 Stracciatella execution here. If you want to report a bug, please include them in your bug report.</div>
-    <div id="logs">(no log captured yet — logs are captured when the game runs)</div>
+    <div id="logs">(no log captured yet - logs are captured when the game runs)</div>
   </div>
 
   <div id="footer">
@@ -269,7 +269,7 @@ $('editorBtn').onclick = function(){ save().then(() => location.href = 'index.ht
 
 function flash(t){
   var tb = document.getElementById('titlebar');
-  var old = tb.textContent; tb.textContent = 'JA2 Stracciatella Launcher — ' + t;
+  var old = tb.textContent; tb.textContent = 'JA2 Stracciatella Launcher - ' + t;
   setTimeout(() => tb.textContent = old, 1200);
 }
 loadUI();

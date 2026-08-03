@@ -15,6 +15,25 @@ Open the URL in **desktop Chrome/Chromium**. The launcher (`launcher.html`) lets
 players read their own legally-owned JA2 Gold `Data` folder straight from disk —
 no game data is shipped.
 
+## Serving the game data yourself (optional)
+
+If **you own the right to distribute JA2 data on your instance**, you can host it
+so players click and play with no folder-picking or upload. Build the data package
+from your own copy and drop it next to `index.html`:
+
+```bash
+wasm-build/bundle-data.sh ~/path/to/ja2install   # → play/ja2-gamedata.{js,data}
+# deploy ja2-gamedata.js + ja2-gamedata.data alongside index.html / launcher.html
+```
+
+When those files are present, the launcher detects them and shows a **"Play now
+— hosted here"** card (a `HEAD` probe of `ja2-gamedata.js`). When absent — the
+default upload-only deploy — the card stays hidden and the launcher is
+bring-your-own-only. Nothing else to configure.
+
+> Jagged Alliance 2 data is commercial. Only host it where you have the right to
+> (e.g. a private instance for your own use). Do not redistribute it publicly.
+
 ## The serving contract
 
 The engine is multi-threaded WASM, which requires **cross-origin isolation**.

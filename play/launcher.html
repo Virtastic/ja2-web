@@ -69,6 +69,10 @@
 
  /* --- Choice cards, styled as stamped ammo-crate plaques --- */
  .cards{display:grid; grid-template-columns:minmax(0,460px); justify-content:center; gap:22px}
+ /* When the server hosts the game data, a second "Play now" card is revealed → two columns. */
+ .cards.two{grid-template-columns:repeat(2,minmax(0,440px))}
+ @media (max-width:720px){ .cards.two{grid-template-columns:minmax(0,460px)} }
+ #card-hosted[hidden]{display:none}
  .card{
    position:relative; padding:32px 30px 28px;
    background:linear-gradient(160deg,var(--panel-2),var(--panel));
@@ -212,8 +216,25 @@
   </div>
 
   <div class="cards">
+    <!-- HOSTED DATA — revealed by JS only when the server actually serves ja2-gamedata.js -->
+    <div class="card actionable reveal d3" id="card-hosted" role="button" tabindex="0" hidden>
+      <div class="glyph" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="7" y="9" width="34" height="12" rx="2"/><rect x="7" y="27" width="34" height="12" rx="2"/>
+          <line x1="13" y1="15" x2="13" y2="15"/><line x1="13" y1="33" x2="13" y2="33"/>
+          <path d="M24 40v4M20 44h8"/>
+        </svg>
+      </div>
+      <div class="kicker">Hosted here</div>
+      <h2>Play now</h2>
+      <p class="lead">The game data is served from this site — <b>nothing to install or upload</b>. Just
+         click and play.</p>
+      <p class="micro">Best on a fast connection: the data downloads once, then caches.</p>
+      <div class="go">Play now <span class="arw">▸</span></div>
+    </div>
+
     <!-- OWN DATA -->
-    <div class="card actionable reveal d3" id="card-local" role="button" tabindex="0">
+    <div class="card actionable reveal d4" id="card-local" role="button" tabindex="0">
       <button class="help-btn" id="help-local" type="button" aria-label="How to bring your own JA2">?</button>
       <div class="glyph" aria-hidden="true">
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
@@ -402,6 +423,22 @@
    card.classList.remove('actionable'); card.classList.add('disabled');
    note('Needs a Chromium browser (Chrome/Edge/Brave) on desktop.','muted');
  }
+
+ // --- Hosted-data card: reveal only if the operator serves the data package here.
+ // index.html (no query) already loads ja2-gamedata.js from the server, so "Play now"
+ // just points there. Absent on the public upload-only deploy → card stays hidden. ---
+ (async function(){
+   try {
+     const r = await fetch('ja2-gamedata.js', { method:'HEAD' });
+     if (!r.ok) return;
+   } catch(e){ return; }
+   const play = () => { location.href = 'index.html'; };
+   const card = $('card-hosted');
+   card.hidden = false;
+   document.querySelector('.cards').classList.add('two');
+   card.addEventListener('click', play);
+   card.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); play(); } });
+ })();
 
  // --- Return-visit fast path ---
  (async function(){

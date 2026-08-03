@@ -133,8 +133,9 @@ Cross-Origin-Resource-Policy: cross-origin
 ```
 
 Serve the precompressed `.gz` siblings with `Content-Encoding: gzip` (nginx
-`gzip_static on;`). That takes the ~43 MB data blob down to ~11 MB and the ~10 MB wasm to
-~3 MB over the wire. The reference vhost is [`infra/nginx.conf`](infra/nginx.conf). The
+`gzip_static on;`). That takes the ~10 MB wasm down to ~3 MB over the wire (the `.js`
+loader and small preloaded `.data` blob compress too). The reference vhost is
+[`infra/nginx.conf`](infra/nginx.conf). The
 engine files are content-versioned into `e/<hash>/`, so a new build is served at a fresh
 URL and the CDN can never serve a mismatched build.
 

@@ -31,8 +31,9 @@ Plus:
 - **HTTPS** (or `http://localhost`) — isolation is only granted on secure origins.
 - `application/wasm` MIME type for `.wasm`.
 - Serve the precompressed `.gz` siblings with `Content-Encoding: gzip` when the
-  client accepts it — this turns the ~43 MB data blob into ~11 MB and the ~10 MB
-  wasm into ~3 MB over the wire. (`server.py` and the nginx config do this.)
+  client accepts it — this turns the ~10 MB wasm into ~3 MB over the wire (the
+  `.js` loader and preloaded `.data` blob compress too). (`server.py` and the
+  nginx config do this.)
 - The engine files are content-versioned into `e/<hash>/`, so long cache
   lifetimes are always safe — a new build lands at a fresh URL; no purge needed.
 

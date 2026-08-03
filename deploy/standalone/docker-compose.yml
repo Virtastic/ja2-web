@@ -1,0 +1,7 @@
+# Dead-simple deploy of a prebuilt ja2-web bundle:  docker compose up  → http://localhost:8080
+services:
+  ja2-web:
+    build: .
+    ports:
+      - "8080:80"
+    restart: unless-stopped

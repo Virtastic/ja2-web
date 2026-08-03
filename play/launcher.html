@@ -69,10 +69,9 @@
 
  /* --- Choice cards, styled as stamped ammo-crate plaques --- */
  .cards{display:grid; grid-template-columns:minmax(0,460px); justify-content:center; gap:22px}
- /* When the server hosts the game data, a second "Play now" card is revealed → two columns. */
- .cards.two{grid-template-columns:repeat(2,minmax(0,440px))}
- @media (max-width:720px){ .cards.two{grid-template-columns:minmax(0,460px)} }
- #card-hosted[hidden]{display:none}
+ /* Exactly one card shows: hosted "Play now" if the server has the data, else the folder picker.
+    .card sets display:flex, which would override the plain [hidden] attribute, so force it here. */
+ .card[hidden]{display:none}
  .card{
    position:relative; padding:32px 30px 28px;
    background:linear-gradient(160deg,var(--panel-2),var(--panel));
@@ -205,7 +204,7 @@
 <div class="wrap">
   <p class="eyebrow reveal d1">Jagged Alliance 2 · in your browser</p>
   <h1 class="reveal d1">Jagged Alliance <span class="two">2</span></h1>
-  <p class="deck reveal d2">Assemble your squad and liberate Arulco, running entirely on your
+  <p class="deck reveal d2" id="deck">Assemble your squad and liberate Arulco, running entirely on your
     machine, nothing uploaded. Point the engine at your own copy of the game to play.</p>
   <div class="rule reveal d2"><span class="diamond"></span></div>
 
@@ -424,20 +423,28 @@
    note('Needs a Chromium browser (Chrome/Edge/Brave) on desktop.','muted');
  }
 
- // --- Hosted-data card: reveal only if the operator serves the data package here.
- // index.html (no query) already loads ja2-gamedata.js from the server, so "Play now"
- // just points there. Absent on the public upload-only deploy → card stays hidden. ---
+ // --- Hosted-data card: reveal only if the server actually hosts the game-data COPY.
+ // index.html (no query) loads ja2-gamedata.js, which in turn fetches the big
+ // ja2-gamedata.data blob — so we probe the .data (the real payload) AND the .js loader.
+ // Both must be present or the boot fails. Absent (public upload-only deploy) → stay hidden. ---
  (async function(){
    try {
-     const r = await fetch('ja2-gamedata.js', { method:'HEAD' });
-     if (!r.ok) return;
+     const [d, j] = await Promise.all([
+       fetch('ja2-gamedata.data', { method:'HEAD' }),
+       fetch('ja2-gamedata.js',   { method:'HEAD' }),
+     ]);
+     if (!d.ok || !j.ok) return;   // no hosted data → folder-picker card stays (the default)
    } catch(e){ return; }
+   // Hosted data is present: this is the ONLY route. Show "Play now", hide the folder-picker path.
    const play = () => { location.href = 'index.html'; };
    const card = $('card-hosted');
    card.hidden = false;
-   document.querySelector('.cards').classList.add('two');
    card.addEventListener('click', play);
    card.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); play(); } });
+   const local = $('card-local'); if (local) local.hidden = true;
+   const cont  = $('continue');   if (cont)  cont.classList.remove('show');
+   const deck  = $('deck');       if (deck)  deck.textContent =
+     'Assemble your squad and liberate Arulco, running right here in your browser — no install, no upload.';
  })();
 
  // --- Return-visit fast path ---

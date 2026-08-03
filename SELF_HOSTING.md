@@ -6,9 +6,16 @@ prebuilt engine and everything below. No compiler needed.
 
 ## Quick start (local)
 
+Grab a [release](https://github.com/Virtastic/ja2-web/releases), unzip, and pick one:
+
 ```bash
 unzip ja2-web-*.zip -d ja2-web && cd ja2-web
-python3 server.py          # http://localhost:8795 (override with PORT=…)
+
+# A) no dependencies but Python:
+python3 server.py           # http://localhost:8795 (override with PORT=…)
+
+# B) Docker (bundled Dockerfile + compose):
+docker compose up           # http://localhost:8080
 ```
 
 Open the URL in **desktop Chrome/Chromium**. The launcher (`launcher.html`) lets

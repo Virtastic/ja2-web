@@ -53,6 +53,8 @@ COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
 COPY play/index.html play/launcher.html play/settings.html /usr/share/nginx/html/
 # Gameplay trailer (web-optimized 1080p H.264, faststart; converted from ja2-mov.mov).
 COPY play/ja2-mov.mp4 /usr/share/nginx/html/
+# Social/OG preview image referenced by the pages' og:image / twitter:image meta.
+COPY play/og.png /usr/share/nginx/html/
 # Built engine artifacts from the builder stage, with their .gz siblings for
 # nginx gzip_static. (No ja2-gamedata.*/ja2-lean.* - upload-only.)
 COPY --from=builder /build/play/ja2.js      /usr/share/nginx/html/

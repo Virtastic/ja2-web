@@ -131,6 +131,14 @@ To enable it:
    `/data` volume) and routes `/api/*` to it - the edge `deploy/ja2.caddy` in front, or the
    image's own nginx if there's no edge. `docker compose up -d` brings it online.
 
+**Abuse limits.** Anyone who can sign in can upload, so every limit is enforced **server-side**
+(the launcher's edition check is a UX nicety - the API is what stops abuse). Out of the box:
+512 MB per file, 64 MB per savegame, **4 GB and 4000 files per account**, and a 100 GB whole-install
+cap in local mode. Uploads are streamed under a hard byte ceiling, so a lying or chunked
+`Content-Length` can't overrun it; paths are validated (no traversal, bounded depth, game-data
+extensions only) so the locker can't be used as a general file host. All are tunable - see
+`cloud/.env.example`. `cloud/test-abuse.sh` runs the attack suite against a scratch instance.
+
 Copyright note: hosting players' commercial `Data/*.slf` in their private per-user prefixes is
 their upload; keep the bucket private (never public-read).
 

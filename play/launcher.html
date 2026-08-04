@@ -657,11 +657,18 @@
    if (bar) bar.hidden = false;
    let done = 0, bytes = 0; const manifest = { edition: v.ed.id, version: v.ed.version, files: [] };
    for (const rel of relList){
-     const pr = await fetch('/api/data/presign', { method:'POST', credentials:'same-origin',
-       headers:{'content-type':'application/json'}, body: JSON.stringify({ path: rel }) });
-     if (!pr.ok){ fail('Upload failed - try signing in again.'); return; }
      const file = await v.have[rel.toLowerCase()].handle.getFile();
-     await fetch((await pr.json()).url, { method:'PUT', body: file });
+     // The server needs the size up front: it checks it against the per-file and per-account quota
+     // and (in S3 mode) binds it into the presigned URL, so the upload can't exceed what was granted.
+     const pr = await fetch('/api/data/presign', { method:'POST', credentials:'same-origin',
+       headers:{'content-type':'application/json'}, body: JSON.stringify({ path: rel, size: file.size }) });
+     if (!pr.ok){
+       const msg = await pr.json().catch(()=>({}));
+       fail(pr.status === 413 ? (msg.error || 'That is over your storage limit.') : 'Upload failed - try signing in again.');
+       return;
+     }
+     const put = await fetch((await pr.json()).url, { method:'PUT', body: file });
+     if (!put.ok){ fail(put.status === 413 ? 'That is over your storage limit.' : 'Upload failed partway through.'); return; }
      bytes += file.size; manifest.files.push({ path: rel, size: file.size }); done++;
      if (bar) bar.firstElementChild.style.width = (done/relList.length*100)+'%';
      if (note){ note.textContent = `Uploading ${v.ed.version}… ${done}/${relList.length} files, ${(bytes/1048576)|0} MB`; note.className='note muted'; }

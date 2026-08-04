@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
+import { Transform } from 'node:stream';
 import path from 'node:path';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
@@ -33,6 +34,37 @@ const userPrefix = (uid) => `users/${uid}/`;
 // ---- Storage backend: S3 when configured, else local disk ---------------------------------------
 const USE_S3 = Boolean(env.S3_BUCKET && env.S3_ENDPOINT);
 const DATA_DIR = env.DATA_DIR || '/data';
+
+// ---- Abuse limits -------------------------------------------------------------------------------
+// Every one of these is enforced SERVER-SIDE. The launcher's "verify against known editions" check is
+// a UX nicety only - anyone can call /api/data/presign directly, so nothing here may trust the client.
+// Defaults sized for a real JA2 Gold install (~1.5 GB, ~180 files) with headroom, not for hoarding.
+const num = (k, d) => (Number.isFinite(Number(env[k])) && Number(env[k]) > 0 ? Number(env[k]) : d);
+const MAX_FILE_BYTES  = num('MAX_FILE_BYTES', 512 * 1024 * 1024);        // one object
+const MAX_USER_BYTES  = num('MAX_USER_BYTES', 4 * 1024 * 1024 * 1024);   // per account, data + saves
+const MAX_USER_FILES  = num('MAX_USER_FILES', 4000);                     // per account
+const MAX_SAVE_BYTES  = num('MAX_SAVE_BYTES', 64 * 1024 * 1024);         // one savegame
+const MAX_TOTAL_BYTES = num('MAX_TOTAL_BYTES', 100 * 1024 * 1024 * 1024);// whole install (local mode)
+// Data files must look like game data. Blocks using the locker as a general file host.
+const DATA_EXT_OK = /\.(slf|dat|edt|lua|json|txt|ini|xml|wav|mp3|ogg|sti|pcx|tga|bmp|dds|npc|emi|dlg)$/i;
+
+// A path is only ever accepted if it round-trips through this: no traversal, no absolute, no
+// backslashes (Windows separators would smuggle segments past a naive split), no dotfiles, bounded
+// depth/length, and a conservative charset. Returns the clean relative path or null.
+function safeRelPath(p, { requireDataExt = false } = {}) {
+  if (typeof p !== 'string' || !p || p.length > 255) return null;
+  if (p.includes('\\') || p.includes('\0')) return null;
+  const segs = p.split('/');
+  if (segs.length > 8) return null;
+  for (const s of segs) {
+    if (!s || s === '.' || s === '..' || s.startsWith('.')) return null;
+    if (!/^[A-Za-z0-9 ._'()\[\]&+-]+$/.test(s)) return null;
+  }
+  const clean = segs.join('/');
+  if (path.posix.normalize(clean) !== clean) return null;
+  if (requireDataExt && !DATA_EXT_OK.test(clean)) return null;
+  return clean;
+}
 
 // Each backend implements: getJson/putJson/list(prefix)/urlFor(key,op). Local also implements
 // readStream/writeStream/del for the /api/blob/* endpoint (S3 clients hit S3 directly instead).
@@ -58,11 +90,23 @@ function s3Store() {
       const r = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET, Prefix: prefix }));
       return (r.Contents || []).map((o) => ({ name: o.Key.slice(prefix.length), size: o.Size, mtime: o.LastModified }));
     },
-    urlFor(key, op) {
-      const cmd = op === 'put' ? new PutObjectCommand({ Bucket: BUCKET, Key: key })
+    // A presigned PUT is a capability the browser uses unsupervised, so the SIZE is baked into the
+    // signature (ContentLength). S3 then rejects any upload that isn't exactly that many bytes -
+    // without this, a presigned PUT is an unlimited write and the quota check below is decorative.
+    urlFor(key, op, size) {
+      const cmd = op === 'put' ? new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentLength: size })
         : op === 'delete' ? new DeleteObjectCommand({ Bucket: BUCKET, Key: key })
         : new GetObjectCommand({ Bucket: BUCKET, Key: key });
       return getSignedUrl(s3, cmd, { expiresIn: op === 'get' ? 3600 : 900 });
+    },
+    async usage(prefix) {                                    // {bytes,files} across ALL pages
+      let bytes = 0, files = 0, ContinuationToken;
+      do {
+        const r = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET, Prefix: prefix, ContinuationToken }));
+        for (const o of r.Contents || []) { bytes += o.Size || 0; files++; }
+        ContinuationToken = r.IsTruncated ? r.NextContinuationToken : undefined;
+      } while (ContinuationToken);
+      return { bytes, files };
     },
   };
 }
@@ -89,9 +133,36 @@ function localStore() {
     // the wildcard param back. op is carried by the HTTP method on the blob route.
     urlFor(key) { return `/api/blob/${key.split('/').map(encodeURIComponent).join('/')}`; },
     readStream(key) { return createReadStream(abs(key)); },
-    async writeStream(key, stream) { await fs.mkdir(path.dirname(abs(key)), { recursive: true }); await pipeline(stream, createWriteStream(abs(key))); },
+    // Streams to disk with a HARD byte ceiling. Content-Length is a client claim, so the limit is
+    // enforced on the bytes actually seen: past `max` we destroy the stream and unlink the partial,
+    // so a lying or chunked (no length) upload can't run the disk out.
+    async writeStream(key, stream, max) {
+      await fs.mkdir(path.dirname(abs(key)), { recursive: true });
+      let seen = 0;
+      const guard = new Transform({ transform(chunk, _enc, cb) {
+        seen += chunk.length;
+        if (seen > max) { cb(Object.assign(new Error('too large'), { code: 'ETOOBIG' })); return; }
+        cb(null, chunk);
+      } });
+      try { await pipeline(stream, guard, createWriteStream(abs(key))); }
+      catch (e) { await this.del(key).catch(() => {}); throw e; }
+      return seen;
+    },
     size(key) { return fs.stat(abs(key)).then((s) => s.size).catch(() => null); },
     async del(key) { try { await fs.unlink(abs(key)); } catch (e) { if (e.code !== 'ENOENT') throw e; } },
+    async usage(prefix) {                                    // recursive {bytes,files}
+      let bytes = 0, files = 0;
+      async function walk(dir) {
+        let ents; try { ents = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of ents) {
+          const p = path.join(dir, e.name);
+          if (e.isDirectory()) await walk(p);
+          else { const st = await fs.stat(p).catch(() => null); if (st) { bytes += st.size; files++; } }
+        }
+      }
+      await walk(abs(prefix));
+      return { bytes, files };
+    },
   };
 }
 const store = USE_S3 ? s3Store() : localStore();
@@ -144,7 +215,8 @@ const uidFor = (provider, sub) => crypto.createHash('sha256').update(`${provider
 // ---- Fastify ------------------------------------------------------------------------------------
 // Raw-stream body for anything that isn't JSON (the blob PUTs). JSON routes keep the default parser,
 // so presign/manifest POSTs are unaffected. bodyLimit high because game-data blobs stream to disk.
-const app = Fastify({ trustProxy: true, bodyLimit: 2 * 1024 * 1024 * 1024, logger: { level: env.LOG_LEVEL || 'info' } });
+// bodyLimit is a backstop for JSON routes; blob PUTs stream and are bounded by MAX_FILE_BYTES.
+const app = Fastify({ trustProxy: true, bodyLimit: MAX_FILE_BYTES, logger: { level: env.LOG_LEVEL || 'info' } });
 app.addContentTypeParser('*', (req, payload, done) => done(null, payload));
 await app.register(cookie);
 
@@ -157,14 +229,76 @@ function requireUser(req, reply) {
   return u;
 }
 
+// ---- Quota accounting ---------------------------------------------------------------------------
+// Walking storage on every presign would be wasteful, so usage is cached briefly per user. Because a
+// stale cache would let parallel uploads race past the limit, in-flight bytes are RESERVED at check
+// time and released when the write finishes - so N concurrent uploads can't each see the same free
+// space. The streaming guard in writeStream is still the last word: this layer is for good errors.
+const usageCache = new Map();                                // uid -> {bytes, files, at}
+const reserved = new Map();                                  // uid -> [{bytes, at}] in flight
+const USAGE_TTL = 10_000;
+// A reservation is only a promise to upload soon; a client that presigns and never PUTs must not
+// hold space forever. Entries expire with the presigned URL itself (15 min), so this self-heals.
+const RESERVE_TTL = 15 * 60_000;
+function reservedBytes(uid) {
+  const list = (reserved.get(uid) || []).filter((r) => Date.now() - r.at < RESERVE_TTL);
+  if (list.length) reserved.set(uid, list); else reserved.delete(uid);
+  return list.reduce((n, r) => n + r.bytes, 0);
+}
+async function usageFor(uid) {
+  const hit = usageCache.get(uid);
+  if (hit && Date.now() - hit.at < USAGE_TTL) return hit;
+  const u = await store.usage(userPrefix(uid));
+  const rec = { ...u, at: Date.now() };
+  usageCache.set(uid, rec);
+  return rec;
+}
+const bumpUsage = (uid, bytes) => {                          // keep the cache warm after a write
+  const h = usageCache.get(uid);
+  if (h) { h.bytes += bytes; h.files += bytes > 0 ? 1 : 0; }
+};
+function release(uid, token) {                                // drop one reservation once its write ends
+  const list = (reserved.get(uid) || []).filter((r) => r !== token);
+  if (list.length) reserved.set(uid, list); else reserved.delete(uid);
+}
+// Returns {remaining} when there is room for `incoming` more bytes, else {error,...}. `replacingKey`
+// is the object about to be overwritten - its current size doesn't count against the new total.
+async function checkQuota(uid, incoming, replacingKey) {
+  const u = await usageFor(uid);
+  const existing = replacingKey ? ((await store.size?.(replacingKey)) ?? 0) : 0;
+  const used = Math.max(0, u.bytes - existing) + reservedBytes(uid);
+  if (u.files >= MAX_USER_FILES && !existing)
+    return { error: `too many files (max ${MAX_USER_FILES})`, maxFiles: MAX_USER_FILES };
+  const remaining = MAX_USER_BYTES - used;
+  if (remaining <= 0 || incoming > remaining)
+    return { error: `over quota (${MAX_USER_BYTES} bytes per account)`, maxBytes: MAX_USER_BYTES, usedBytes: used };
+  if (store.kind === 'local') {                              // whole-install guard: protect the disk
+    const total = await totalUsage();
+    if (total + incoming > MAX_TOTAL_BYTES) return { error: 'server storage is full', serverFull: true };
+  }
+  const token = { bytes: Math.max(0, incoming), at: Date.now() };
+  reserved.set(uid, [...(reserved.get(uid) || []), token]);
+  return { remaining, release: () => release(uid, token) };
+}
+let totalCache = { bytes: 0, at: 0 };
+async function totalUsage() {
+  if (Date.now() - totalCache.at < 30_000) return totalCache.bytes;
+  const { bytes } = await store.usage('users/');
+  totalCache = { bytes, at: Date.now() };
+  return bytes;
+}
+
 app.get('/api/health', async () => ({ ok: true, storage: store.kind,
+  limits: { maxFileBytes: MAX_FILE_BYTES, maxSaveBytes: MAX_SAVE_BYTES, maxUserBytes: MAX_USER_BYTES, maxUserFiles: MAX_USER_FILES },
   providers: Object.fromEntries(Object.entries(PROVIDERS).map(([k, v]) => [k, Boolean(v.id && v.secret)])) }));
 
 app.get('/api/me', async (req, reply) => {
   const u = currentUser(req);
   if (!u) return reply.code(401).send({ error: 'not signed in' });
   const m = await store.getJson(`${userPrefix(u.uid)}data/manifest.json`);
-  return { uid: u.uid, name: u.name, hasData: Boolean(m?.files?.length) };
+  const use = await usageFor(u.uid).catch(() => ({ bytes: 0, files: 0 }));
+  return { uid: u.uid, name: u.name, hasData: Boolean(m?.files?.length),
+    usedBytes: use.bytes, usedFiles: use.files, maxBytes: MAX_USER_BYTES, maxFiles: MAX_USER_FILES };
 });
 
 // --- OAuth login: redirect to the provider with a signed state cookie (CSRF) ---
@@ -227,8 +361,16 @@ app.get('/api/saves', async (req, reply) => {
 app.post('/api/saves/presign', async (req, reply) => {
   const u = requireUser(req, reply); if (!u) return;
   const { name, op = 'get' } = req.body || {};
-  if (!name || /[/\\]/.test(name)) return reply.code(400).send({ error: 'bad name' });
-  return { url: await store.urlFor(`${userPrefix(u.uid)}saves/${name}`, op) };
+  const clean = safeRelPath(String(name ?? ''));
+  if (!clean || clean.includes('/')) return reply.code(400).send({ error: 'bad name' });
+  if (op === 'put') {
+    const size = Number(req.body?.size);
+    if (!Number.isInteger(size) || size < 0 || size > MAX_SAVE_BYTES)
+      return reply.code(413).send({ error: `save too large (max ${MAX_SAVE_BYTES} bytes)`, maxBytes: MAX_SAVE_BYTES });
+    const room = await checkQuota(u.uid, size, `${userPrefix(u.uid)}saves/${clean}`);
+    if (room.error) return reply.code(413).send(room);
+  }
+  return { url: await store.urlFor(`${userPrefix(u.uid)}saves/${clean}`, op, Number(req.body?.size) || 0) };
 });
 
 // --- Game data: manifest (a URL per file) + upload URL + manifest write ---
@@ -241,29 +383,76 @@ app.get('/api/data/manifest', async (req, reply) => {
 });
 app.post('/api/data/presign', async (req, reply) => {
   const u = requireUser(req, reply); if (!u) return;
-  const { path: rel, manifest } = req.body || {};
-  if (manifest) { await store.putJson(`${userPrefix(u.uid)}data/manifest.json`, manifest); return { ok: true }; }
-  if (!rel || rel.includes('..')) return reply.code(400).send({ error: 'bad path' });
-  return { url: await store.urlFor(`${userPrefix(u.uid)}data/${rel}`, 'put') };
+  const { path: rel, manifest, size } = req.body || {};
+
+  // Manifest write: bounded list of {path,size} that all pass the same path rules, and whose total
+  // fits the quota. Stored normalized so a hostile manifest can't smuggle fields or fake sizes.
+  if (manifest) {
+    const list = Array.isArray(manifest.files) ? manifest.files : null;
+    if (!list) return reply.code(400).send({ error: 'bad manifest' });
+    if (list.length > MAX_USER_FILES) return reply.code(413).send({ error: `too many files (max ${MAX_USER_FILES})` });
+    let total = 0; const files = [];
+    for (const f of list) {
+      const p = safeRelPath(String(f?.path ?? ''), { requireDataExt: true });
+      const sz = Number(f?.size);
+      if (!p || !Number.isInteger(sz) || sz < 0 || sz > MAX_FILE_BYTES) return reply.code(400).send({ error: `bad manifest entry: ${String(f?.path).slice(0, 80)}` });
+      total += sz; files.push({ path: p, size: sz });
+    }
+    if (total > MAX_USER_BYTES) return reply.code(413).send({ error: `over quota (max ${MAX_USER_BYTES} bytes)`, maxBytes: MAX_USER_BYTES });
+    await store.putJson(`${userPrefix(u.uid)}data/manifest.json`, { files, updated: new Date().toISOString() });
+    return { ok: true };
+  }
+
+  const clean = safeRelPath(String(rel ?? ''), { requireDataExt: true });
+  if (!clean) return reply.code(400).send({ error: 'bad path' });
+  const sz = Number(size);
+  if (!Number.isInteger(sz) || sz < 0 || sz > MAX_FILE_BYTES)
+    return reply.code(413).send({ error: `file too large (max ${MAX_FILE_BYTES} bytes)`, maxBytes: MAX_FILE_BYTES });
+  const room = await checkQuota(u.uid, sz, `${userPrefix(u.uid)}data/${clean}`);
+  if (room.error) return reply.code(413).send(room);
+  return { url: await store.urlFor(`${userPrefix(u.uid)}data/${clean}`, 'put', sz) };
 });
 
 // --- Blob endpoint (local storage only): the browser PUTs/GETs/DELETEs here instead of S3. The key
-//     is taken from the URL, so it MUST be re-checked against the session uid (no presign signature
-//     to rely on) - a user can only touch their own users/<uid>/ prefix. ---
+//     comes from the URL, so EVERY constraint is re-checked here (there is no presign signature to
+//     trust): the key must be inside the caller's own users/<uid>/ prefix, the path must pass the
+//     same rules as presign, and the body is streamed under a hard byte ceiling. ---
 if (store.kind === 'local') {
   app.route({ method: ['GET', 'PUT', 'DELETE'], url: '/api/blob/*', handler: async (req, reply) => {
     const u = requireUser(req, reply); if (!u) return;
-    const key = req.params['*'];
-    if (!key || key.includes('..') || !key.startsWith(`users/${u.uid}/`)) return reply.code(403).send({ error: 'forbidden' });
+    const key = req.params['*'] || '';
+    const mine = `users/${u.uid}/`;
+    if (!key.startsWith(mine)) return reply.code(403).send({ error: 'forbidden' });
+    const rest = key.slice(mine.length);                                  // "data/<rel>" | "saves/<name>"
+    const m = /^(data|saves)\/(.+)$/s.exec(rest);
+    if (!m) return reply.code(403).send({ error: 'forbidden' });
+    const isData = m[1] === 'data';
+    const clean = safeRelPath(m[2], { requireDataExt: isData });
+    if (!clean || (!isData && clean.includes('/'))) return reply.code(400).send({ error: 'bad path' });
+    const safeKey = `${mine}${m[1]}/${clean}`;
+
     if (req.method === 'PUT') {
       if (!req.body || typeof req.body.pipe !== 'function') return reply.code(400).send({ error: 'no body' });
-      await store.writeStream(key, req.body); return { ok: true };
+      const cap = isData ? MAX_FILE_BYTES : MAX_SAVE_BYTES;
+      // Reject on the declared length first (cheap), then enforce for real while streaming.
+      const declared = Number(req.headers['content-length']);
+      if (Number.isFinite(declared) && declared > cap) return reply.code(413).send({ error: `too large (max ${cap} bytes)` });
+      const room = await checkQuota(u.uid, Number.isFinite(declared) ? declared : 0, safeKey);
+      if (room.error) return reply.code(413).send(room);
+      try {
+        const written = await store.writeStream(safeKey, req.body, Math.min(cap, room.remaining));
+        bumpUsage(u.uid, written);
+        return { ok: true, size: written };
+      } catch (e) {
+        if (e?.code === 'ETOOBIG') return reply.code(413).send({ error: 'too large / over quota' });
+        throw e;
+      } finally { room.release(); }
     }
-    if (req.method === 'DELETE') { await store.del(key); return { ok: true }; }
-    const size = await store.size(key);
+    if (req.method === 'DELETE') { await store.del(safeKey); return { ok: true }; }
+    const size = await store.size(safeKey);
     if (size === null) return reply.code(404).send({ error: 'not found' });
     reply.header('content-type', 'application/octet-stream').header('content-length', size);
-    return reply.send(store.readStream(key));
+    return reply.send(store.readStream(safeKey));
   } });
 }
 

@@ -10,7 +10,7 @@ FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=prod-deps /app/node_modules ./node_modules
-COPY package.json server.js ./
+COPY package.json server.js ja2-editions.json ./
 # Local-storage mode writes to /data as the non-root user. Own it in the image so a fresh named
 # volume mounted here inherits node ownership (Docker seeds an empty volume from the image path).
 RUN mkdir -p /data && chown node:node /data

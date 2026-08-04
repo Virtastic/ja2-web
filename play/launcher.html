@@ -664,11 +664,21 @@
        headers:{'content-type':'application/json'}, body: JSON.stringify({ path: rel, size: file.size }) });
      if (!pr.ok){
        const msg = await pr.json().catch(()=>({}));
-       fail(pr.status === 413 ? (msg.error || 'That is over your storage limit.') : 'Upload failed - try signing in again.');
+       fail(pr.status === 413 ? (msg.error || 'That is over your storage limit.')
+            : pr.status === 422 ? (msg.error || 'That file is not recognized JA2 game data.')
+            : 'Upload failed - try signing in again.');
        return;
      }
-     const put = await fetch((await pr.json()).url, { method:'PUT', body: file });
-     if (!put.ok){ fail(put.status === 413 ? 'That is over your storage limit.' : 'Upload failed partway through.'); return; }
+     // The server may hand back headers to apply (S3 mode sends the expected Content-MD5, so S3
+     // itself rejects altered bytes). Local mode returns none and hashes the stream server-side.
+     const grant = await pr.json();
+     const put = await fetch(grant.url, { method:'PUT', body: file, headers: grant.headers || {} });
+     if (!put.ok){
+       fail(put.status === 413 ? 'That is over your storage limit.'
+          : put.status === 422 ? `${rel} does not match any known JA2 edition.`
+          : 'Upload failed partway through.');
+       return;
+     }
      bytes += file.size; manifest.files.push({ path: rel, size: file.size }); done++;
      if (bar) bar.firstElementChild.style.width = (done/relList.length*100)+'%';
      if (note){ note.textContent = `Uploading ${v.ed.version}… ${done}/${relList.length} files, ${(bytes/1048576)|0} MB`; note.className='note muted'; }

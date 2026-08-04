@@ -16,7 +16,7 @@ code() { curl -s -o /dev/null -w '%{http_code}' -b "$J" "$@"; }
 jsonp() { curl -s -b "$J" -X POST -H 'content-type: application/json' -d "$2" "$B$1"; }
 
 # Small limits so the test is fast: 1 MB/file, 3 MB/account, 5 files, 1 MB/save.
-DEV_AUTH=1 PORT=$PORT DATA_DIR="$TMP/data" JWT_SECRET=test \
+DEV_AUTH=1 PORT=$PORT DATA_DIR="$TMP/data" JWT_SECRET=test VERIFY_DATA=0 \
   MAX_FILE_BYTES=1048576 MAX_USER_BYTES=3145728 MAX_USER_FILES=5 MAX_SAVE_BYTES=1048576 \
   "$NODE" "$DIR/server.js" >"$TMP/log" 2>&1 &
 SRV=$!
@@ -89,6 +89,39 @@ c=$(jsonp /api/data/presign '{"manifest":{"files":[{"path":"a.slf","size":100000
 [ "$c" = 1 ] && pass "manifest totalling over the account quota rejected" || fail "manifest quota total" "accepted"
 c=$(jsonp /api/data/presign '{"manifest":{"files":[{"path":"../../../evil.slf","size":1}]}}' | grep -c 'bad manifest entry')
 [ "$c" = 1 ] && pass "manifest path traversal rejected" || fail "manifest traversal" "accepted"
+
+# --- "is this actually JA2 data?" (second instance: verification ON, real-world limits) ---------
+# The checks above use synthetic filenames, so that instance runs VERIFY_DATA=0. Authenticity is a
+# separate concern and needs real edition files, so it gets its own server.
+P2=8141; B2="http://127.0.0.1:$P2"; J2="$TMP/jar2"
+DEV_AUTH=1 PORT=$P2 DATA_DIR="$TMP/data2" JWT_SECRET=test "$NODE" "$DIR/server.js" >"$TMP/log2" 2>&1 &
+SRV2=$!
+trap 'kill $SRV $SRV2 2>/dev/null; rm -rf "$TMP"' EXIT
+for _ in $(seq 1 40); do curl -sf "$B2/api/health" >/dev/null 2>&1 && break; sleep 0.25; done
+curl -s -c "$J2" -o /dev/null "$B2/api/auth/dev/login?uid=faker"
+UID_B=$(curl -s -b "$J2" "$B2/api/me" | sed 's/.*"uid":"//;s/".*//')
+v2() { curl -s -b "$J2" -X POST -H 'content-type: application/json' -d "$1" "$B2/api/data/presign"; }
+hv=$(curl -s "$B2/api/health" | grep -c '"verifyData":true')
+[ "$hv" = 1 ] && pass "data verification is ON (allowlist loaded)" || fail "verification" "not enabled"
+
+# radarmaps.slf is a real GOG file: 1678333 bytes, md5 20cae0ef3128495f64c58ee5212390a5.
+c=$(v2 '{"path":"radarmaps.slf","size":1234}' | grep -c 'not a recognized'); [ "$c" = 1 ] \
+  && pass "known filename with WRONG size rejected" || fail "size must match edition" "accepted"
+c=$(v2 '{"path":"totally-made-up.slf","size":1678333}' | grep -c 'not a recognized'); [ "$c" = 1 ] \
+  && pass "unknown filename rejected (not in any edition)" || fail "unknown file" "accepted"
+c=$(v2 '{"manifest":{"files":[{"path":"pirate-movie.slf","size":1678333}]}}' | grep -c 'not a recognized')
+[ "$c" = 1 ] && pass "manifest listing a non-JA2 file rejected" || fail "manifest allowlist" "accepted"
+# Right name, right size, WRONG BYTES: presign succeeds (name+size look real), the upload must not.
+U=$(v2 '{"path":"radarmaps.slf","size":1678333}' | sed 's/.*"url":"//;s/".*//')
+case "$U" in
+  /api/blob/*)
+    pass "genuine name+size passes presign"
+    head -c 1678333 /dev/zero > "$TMP/fake.slf"          # correct size, junk contents
+    c=$(curl -s -o /dev/null -w '%{http_code}' -b "$J2" -X PUT --data-binary @"$TMP/fake.slf" "$B2$U")
+    [ "$c" = 422 ] && pass "correct size but WRONG CONTENTS rejected (md5 verified)" || fail "content verification" "got $c - junk accepted!"
+    [ -f "$TMP/data2/users/$UID_B/data/radarmaps.slf" ] && fail "unverified bytes" "left on disk" || pass "unverified bytes not left on disk" ;;
+  *) fail "genuine file presign" "rejected a real edition file: $U" ;;
+esac
 
 # --- saves are capped too -----------------------------------------------------------------------
 c=$(jsonp /api/saves/presign '{"name":"big.sav","op":"put","size":99999999}' | grep -c 'too large'); [ "$c" = 1 ] \

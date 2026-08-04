@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><!-- SPDX-License-Identifier: GPL-3.0-or-later | part of ja2-web -->
 <meta charset="utf-8">
-<title>JA2-Web</title><script>/* Lock the tab title: the engine calls SDL_SetWindowTitle (document.title=...) on boot; shadow the property so those writes are ignored and the tab always reads JA2-Web. */(function(){var LOCK="JA2-Web";try{Object.defineProperty(document,"title",{configurable:true,get:function(){return LOCK},set:function(){}});}catch(e){}try{var t=document.getElementsByTagName("title")[0];if(t)t.textContent=LOCK;}catch(e){}})();</script>
+<title>Jagged Alliance 2</title><script>/* Lock the tab title: the engine calls SDL_SetWindowTitle (document.title=...) on boot; shadow the property so those writes are ignored and the tab always reads Jagged Alliance 2. */(function(){var LOCK="Jagged Alliance 2";try{Object.defineProperty(document,"title",{configurable:true,get:function(){return LOCK},set:function(){}});}catch(e){}try{var t=document.getElementsByTagName("title")[0];if(t)t.textContent=LOCK;}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Play Jagged Alliance 2 in your browser - the JA2 Stracciatella engine compiled to WebAssembly. Bring your own JA2 Gold data; nothing is uploaded. Desktop Chrome/Chromium.">
 <link rel="canonical" href="https://ja2.virtastic.app/">
@@ -82,10 +82,35 @@
  .diamond{width:7px; height:7px; transform:rotate(45deg); border:1px solid var(--gold); flex:none}
 
  /* --- Choice cards, styled as stamped ammo-crate plaques --- */
- .cards{display:grid; grid-template-columns:minmax(0,460px); justify-content:center; gap:22px}
- /* Exactly one card shows: hosted "Play now" if the server has the data, else the folder picker.
-    .card sets display:flex, which would override the plain [hidden] attribute, so force it here. */
+ .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,440px)); justify-content:center; gap:22px}
+ /* .card sets display:flex, which would override the plain [hidden] attribute, so force it here. */
  .card[hidden]{display:none}
+ /* Cloud Locker sign-in modal + SSO buttons - faithful to CS-Web's multiplayer sign-in. */
+ .modal.mp-modal{max-width:440px; text-align:center}
+ .mp-glyph{width:44px; height:44px; margin:2px auto 14px; color:var(--khaki-hi)}
+ .mp-glyph svg{width:100%; height:100%; display:block}
+ .mp-providers{display:flex; flex-direction:column; gap:9px; margin-top:22px}
+ .mp-prov{display:flex; align-items:center; justify-content:center; gap:11px; width:100%;
+   box-sizing:border-box; padding:12px 16px; border-radius:5px; cursor:pointer;
+   font:600 14px/1 "Optima","Gill Sans",-apple-system,"Segoe UI",sans-serif; letter-spacing:.01em;
+   background:#f6f4ee; color:#20242b; border:1px solid #d9d3c4;
+   transition:background .14s ease, transform .06s ease}
+ .mp-prov:hover{background:#fff} .mp-prov:active{transform:translateY(1px)}
+ .mp-prov:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+ .mp-prov svg{width:19px; height:19px; flex:none}
+ .mp-prov.soon{background:rgba(255,255,255,.04); color:var(--faint); border-color:var(--line);
+   cursor:default; position:relative}
+ .mp-prov.soon:hover{background:rgba(255,255,255,.04); transform:none}
+ .mp-prov.soon svg{opacity:.4}
+ .mp-prov .soon-tag{position:absolute; right:14px; font:600 9px/1 "Optima",sans-serif;
+   letter-spacing:.14em; text-transform:uppercase; color:var(--faint); border:1px solid var(--line);
+   border-radius:3px; padding:3px 6px}
+ .cloud-who{font-size:13px; color:var(--muted); margin:2px 0} .cloud-who b{color:var(--gold-hi)}
+ .cloud-bar{height:6px; border-radius:3px; background:var(--panel-2); overflow:hidden; margin:10px 0}
+ .cloud-bar>i{display:block; height:100%; width:0; background:var(--gold); transition:width .2s}
+ .cloud-link{background:none; border:none; color:var(--faint); font-size:12px; cursor:pointer;
+   text-decoration:underline; padding:2px}
+ .cloud-link:hover{color:var(--muted)}
  .card{
    position:relative; padding:32px 30px 28px;
    background:linear-gradient(160deg,var(--panel-2),var(--panel));
@@ -229,8 +254,26 @@
   </div>
 
   <div class="cards">
+    <!-- CLOUD - revealed by JS only when the cloud backend (/api) is reachable. Click opens the
+         login/actions modal (filled from /api/me). Same card + modal styling as the other tiles. -->
+    <div class="card actionable reveal d3" id="card-cloud" role="button" tabindex="0" hidden>
+      <button class="help-btn" id="help-cloud" type="button" aria-label="About the Cloud Locker">?</button>
+      <div class="glyph" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 34a8 8 0 0 1-1-15.9A11 11 0 0 1 35 20a7 7 0 0 1 0 14"/>
+          <rect x="17" y="26" width="14" height="12" rx="2"/><path d="M20 26v-2a4 4 0 0 1 8 0v2"/>
+          <circle cx="24" cy="31" r="1.3" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div class="kicker">Sync anywhere</div>
+      <h2>Cloud Locker</h2>
+      <p class="lead" id="cloud-lead">Sign in to keep your game data and saves in the cloud - they follow
+         you to any device, nothing to re-pick.</p>
+      <div class="go" id="cloud-go">Sign in <span class="arw">▸</span></div>
+    </div>
+
     <!-- HOSTED DATA - revealed by JS only when the server actually serves ja2-gamedata.js -->
-    <div class="card actionable reveal d3" id="card-hosted" role="button" tabindex="0" hidden>
+    <div class="card actionable reveal d4" id="card-hosted" role="button" tabindex="0" hidden>
       <div class="glyph" aria-hidden="true">
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
           <rect x="7" y="9" width="34" height="12" rx="2"/><rect x="7" y="27" width="34" height="12" rx="2"/>
@@ -339,15 +382,17 @@
          can be written to the folder).</li>
    </ul>`;
  (function(){
-   const bd=$('modal-bd'), body=$('modal-body');
-   function openModal(){ body.innerHTML=HELP_LOCAL; bd.classList.add('show'); $('modal-close').focus(); }
-   function closeModal(){ bd.classList.remove('show'); }
+   const bd=$('modal-bd'), body=$('modal-body'), modalEl=bd.querySelector('.modal');
+   // Shared modal: any tile can open it with its own HTML (+ optional variant class on .modal, e.g.
+   // 'mp-modal' for the narrow centered sign-in). Returns the body element for wiring handlers.
+   window.__modalOpen = function(html, variant){ body.innerHTML=html; modalEl.className='modal'+(variant?' '+variant:''); bd.classList.add('show'); $('modal-close').focus(); return body; };
+   window.__modalClose = function(){ bd.classList.remove('show'); };
    const hb=$('help-local');   // stop the event so the card's pick handler doesn't also fire
-   if(hb){ hb.addEventListener('click', e=>{ e.stopPropagation(); openModal(); });
+   if(hb){ hb.addEventListener('click', e=>{ e.stopPropagation(); window.__modalOpen(HELP_LOCAL); });
            hb.addEventListener('keydown', e=>{ e.stopPropagation(); }); }
-   $('modal-close').addEventListener('click', closeModal);
-   bd.addEventListener('click', e=>{ if(e.target===bd) closeModal(); });
-   document.addEventListener('keydown', e=>{ if(e.key==='Escape' && bd.classList.contains('show')) closeModal(); });
+   $('modal-close').addEventListener('click', window.__modalClose);
+   bd.addEventListener('click', e=>{ if(e.target===bd) window.__modalClose(); });
+   document.addEventListener('keydown', e=>{ if(e.key==='Escape' && bd.classList.contains('show')) window.__modalClose(); });
  })();
  const hasFSA = typeof window.showDirectoryPicker === 'function';
 
@@ -459,6 +504,189 @@
    const cont  = $('continue');   if (cont)  cont.classList.remove('show');
    const deck  = $('deck');       if (deck)  deck.textContent =
      'Assemble your squad and liberate Arulco, running right here in your browser - no install, no upload.';
+ })();
+
+ // --- Cloud tile: sign in (Discord/Google/Microsoft), upload data + saves to S3. Revealed only
+ // when the cloud backend (/api) is reachable; otherwise the tile stays hidden (default deploy). ---
+ // Brand glyphs for the provider buttons (inline, exact from CS-Web - no remote assets, strict CSP).
+ const PROVIDER_ICONS = {
+   google: '<svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.2 13.5 17.6 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.4 5.7C43.6 38 46.5 31.8 46.5 24.5z"/><path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C1 16.4 0 20.1 0 24s1 7.6 2.6 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.5 2.2-6.4 0-11.8-4-13.6-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>',
+   discord: '<svg viewBox="0 0 24 24" fill="#5865F2"><path d="M20.3 4.5A19.8 19.8 0 0 0 15.4 3l-.3.5c1.8.4 3.3 1 4.7 1.9-1.7-.8-3.5-1.3-5.4-1.5a20.4 20.4 0 0 0-4.8 0c-1.9.2-3.7.7-5.4 1.5 1.4-.9 2.9-1.5 4.7-1.9L8.6 3A19.8 19.8 0 0 0 3.7 4.5C1.2 8.2.4 11.8.8 15.4a19.9 19.9 0 0 0 6 3l.8-1.3c-.7-.3-1.4-.6-2-1l.5-.4a14.2 14.2 0 0 0 12 0l.5.4c-.6.4-1.3.7-2 1l.8 1.3a19.9 19.9 0 0 0 6-3c.5-4.2-.8-7.8-2.4-10.9zM9 13.5c-1 0-1.7-.9-1.7-1.9S8 9.7 9 9.7s1.7.9 1.7 1.9S10 13.5 9 13.5zm6 0c-1 0-1.7-.9-1.7-1.9S14 9.7 15 9.7s1.7.9 1.7 1.9S16 13.5 15 13.5z"/></svg>',
+   microsoft: '<svg viewBox="0 0 24 24"><path fill="#F25022" d="M1 1h10.5v10.5H1z"/><path fill="#7FBA00" d="M12.5 1H23v10.5H12.5z"/><path fill="#00A4EF" d="M1 12.5h10.5V23H1z"/><path fill="#FFB900" d="M12.5 12.5H23V23H12.5z"/></svg>',
+ };
+ function providerLabel(p){ return p.charAt(0).toUpperCase()+p.slice(1); }
+ let cloudProviders = {};   // {google:bool,...} - which providers the backend has configured (live)
+ // Render the "Continue with X" buttons into #cloud-providers. Live = clickable cream button;
+ // not-yet-enabled = dark "Soon" button. Same lineup + styling as CS-Web's multiplayer sign-in.
+ function renderCloudProviders(){
+   const box = $('cloud-providers'); if (!box) return;
+   box.innerHTML = '';
+   let firstLive = null;
+   ['google','discord','microsoft'].forEach(function(key){
+     const live = !!cloudProviders[key];
+     const b = document.createElement('button');
+     b.type = 'button'; b.className = 'mp-prov' + (live?'':' soon');
+     b.innerHTML = (PROVIDER_ICONS[key]||'') + '<span>Continue with '+providerLabel(key)+'</span>'
+       + (live?'':'<span class="soon-tag">Soon</span>');
+     if (live){ b.addEventListener('click', function(){ location.href='/api/auth/'+key+'/login'; }); if(!firstLive) firstLive=b; }
+     else { b.disabled = true; b.setAttribute('aria-disabled','true'); }
+     box.appendChild(b);
+   });
+   if (firstLive) firstLive.focus();
+ }
+ // The Cloud Locker glyph (data + saves), used on the tile and centered in the sign-in modal.
+ const CLOUD_GLYPH = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 34a8 8 0 0 1-1-15.9A11 11 0 0 1 35 20a7 7 0 0 1 0 14"/><rect x="17" y="26" width="14" height="12" rx="2"/><path d="M20 26v-2a4 4 0 0 1 8 0v2"/><circle cx="24" cy="31" r="1.3" fill="currentColor" stroke="none"/></svg>';
+ const esc = (s) => String(s||'').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+ let cloudMe = null;                         // null = signed out; else {uid,name,hasData}
+ async function cloudFetchMe(){
+   try { const r = await fetch('/api/me', { credentials:'same-origin' }); cloudMe = r.ok ? await r.json() : null; }
+   catch(e){ cloudMe = null; }
+   return cloudMe;
+ }
+ // Reflect auth state on the tile face (lead + go label). Clicking the tile always opens the modal.
+ function cloudUpdateTile(){
+   const lead = $('cloud-lead'), go = $('cloud-go');
+   if (!cloudMe){
+     lead.textContent = 'Sign in to store your game data and saves on the server - play from any device, nothing to re-pick.';
+     go.innerHTML = 'Sign in <span class="arw">▸</span>';
+   } else if (cloudMe.hasData){
+     lead.innerHTML = 'Signed in as <b>'+esc(cloudMe.name)+'</b>. Your data and saves are in the cloud.';
+     go.innerHTML = 'Play from cloud <span class="arw">▸</span>';
+   } else {
+     lead.innerHTML = 'Signed in as <b>'+esc(cloudMe.name)+'</b>. Upload your JA2 data to play from any device.';
+     go.innerHTML = 'Upload &amp; play <span class="arw">▸</span>';
+   }
+ }
+ // Modal content per auth state (reuses the shared launcher modal + its styling).
+ function cloudModalHtml(){
+   if (!cloudMe){
+     return '<div class="mp-glyph" aria-hidden="true">' + CLOUD_GLYPH + '</div>'
+       + '<div class="m-kicker">Cloud Locker</div>'
+       + '<h3 id="modal-title">Sign in to your locker</h3>'
+       + '<div id="cloud-providers" class="mp-providers"></div>'
+       + '<p class="note" id="cloud-note"></p>';
+   }
+   const who = '<div class="m-kicker">Cloud Locker &middot; signed in as '+esc(cloudMe.name)+'</div>';
+   if (cloudMe.hasData){
+     return who + '<h3 id="modal-title">Play from your locker</h3>'
+       + '<p>Your game data and saves live on your account. Play here on any device.</p>'
+       + '<div class="oauth-btns"><button class="oauth-btn" id="cloud-play"><span class="lbl">Play from cloud</span> ▸</button>'
+       + '<button class="oauth-btn" id="cloud-reupload"><span class="lbl">Replace uploaded data</span></button></div>'
+       + '<div class="cloud-bar" id="cloud-bar" hidden><i></i></div><div class="note muted" id="cloud-note"></div>'
+       + '<p style="margin-top:14px"><button class="cloud-link" id="cloud-signout">Sign out</button></p>';
+   }
+   return who + '<h3 id="modal-title">Upload your JA2 data</h3>'
+     + '<p>Point to the <b>Data</b> folder of your legal JA2 Gold install once. We verify it against the '
+     + 'known editions, then store it to your account so any device just logs in and plays.</p>'
+     + '<div class="oauth-btns"><button class="oauth-btn" id="cloud-upload"><span class="lbl">Choose your JA2 folder</span></button></div>'
+     + '<div class="cloud-bar" id="cloud-bar" hidden><i></i></div><div class="note muted" id="cloud-note"></div>'
+     + '<p style="margin-top:14px"><button class="cloud-link" id="cloud-signout">Sign out</button></p>';
+ }
+ function cloudOpenModal(){
+   const signedOut = !cloudMe;
+   const body = window.__modalOpen(cloudModalHtml(), signedOut ? 'mp-modal' : '');
+   if (signedOut){ renderCloudProviders(); return; }      // sign-in: the "Continue with X" buttons
+   const play = body.querySelector('#cloud-play');       if (play)   play.onclick = () => { location.href = 'index.html?src=cloud'; };
+   const up   = body.querySelector('#cloud-upload');      if (up)     up.onclick = cloudUpload;
+   const re   = body.querySelector('#cloud-reupload');    if (re)     re.onclick = cloudUpload;
+   const so   = body.querySelector('#cloud-signout');     if (so)     so.onclick = async () => {
+     await fetch('/api/auth/logout', { method:'POST', credentials:'same-origin' });
+     await cloudFetchMe(); cloudUpdateTile(); cloudOpenModal();
+   };
+ }
+ // Proper data verification: match the picked folder against the engine's own resource-pack
+ // manifests (fsroot/externalized/resource_packs/*.json → play/data-manifests.json) by file SIZE,
+ // exactly like Stracciatella's guess.rs. Detects the edition (GOG / Steam DE·FR·PL·RU) and
+ // reports completeness, instead of naively counting .slf files.
+ let __manifestsCache = null;
+ async function loadManifests(){
+   if (!__manifestsCache) __manifestsCache = (await (await fetch('data-manifests.json')).json()).editions;
+   return __manifestsCache;
+ }
+ async function verifyJA2Data(dir){
+   const have = {};                                        // pathLower -> { size, handle, rel }
+   async function walk(d, prefix){
+     for await (const [name,h] of d.entries()){
+       const rel = prefix ? prefix+'/'+name : name;
+       if (h.kind==='directory') await walk(h, rel);
+       else { const f = await h.getFile(); have[rel.toLowerCase()] = { size:f.size, handle:h, rel }; }
+     }
+   }
+   await walk(dir, '');
+   const editions = await loadManifests();
+   let best = null;
+   for (const ed of editions){
+     const paths = Object.entries(ed.files);
+     let matched = 0; const missing = [], mismatch = [];
+     for (const [p, sz] of paths){
+       const h = have[p];
+       if (!h) missing.push(p);
+       else if (h.size !== sz) mismatch.push(p);
+       else matched++;
+     }
+     const total = paths.length;
+     // Detect by the MOST exact size matches (absolute) - a ratio would wrongly favour an edition
+     // with fewer total files. The true edition of a real install matches ~all of its files.
+     if (!best || matched > best.matched) best = { ed, matched, total, missing, mismatch, score: matched/total };
+   }
+   // Recognized & near-complete. Real installs match ~100%; wrong/garbage folders score <50% (a huge
+   // gap), so 0.85 forgives a few missing optional files without accepting non-JA2 data. Extra files
+   // in the folder are ignored (not counted against the match).
+   best.ok = best.score >= 0.85;
+   best.have = have;
+   return best;
+ }
+ async function cloudUpload(){
+   const note = $('cloud-note'), bar = $('cloud-bar');
+   const fail = (msg) => { if(note){ note.textContent = msg; note.className = 'note err'; } };
+   if (!hasFSA){ fail('Folder upload needs Chrome/Edge/Brave on desktop.'); return; }
+   let picked; try { picked = await window.showDirectoryPicker({ id:'ja2', mode:'read' }); } catch(e){ return; }
+   const { data } = await resolveDataDir(picked);
+   if (note){ note.textContent = 'Verifying your JA2 data…'; note.className = 'note muted'; }
+   let v; try { v = await verifyJA2Data(data); } catch(e){ fail('Could not read that folder.'); return; }
+   if (!v.ok){
+     const near = v.ed.name || v.ed.id;
+     fail(`That doesn't match a known JA2 install. Closest: ${near} - ${v.matched}/${v.total} files verified`
+       + (v.mismatch.length ? `, ${v.mismatch.length} wrong size` : '')
+       + (v.missing.length ? `, ${v.missing.length} missing` : '') + '. Pick a complete JA2 Data folder.');
+     return;
+   }
+   // Verified. Upload the recognized edition's files that are present (skip any missing optional ones).
+   const relList = Object.keys(v.ed.files).filter(p => v.have[p]).map(p => v.have[p].rel);
+   if (note){ note.textContent = `${v.ed.name} verified (${v.matched} files). Uploading…`; note.className = 'note ok'; }
+   if (bar) bar.hidden = false;
+   let done = 0, bytes = 0; const manifest = { edition: v.ed.id, version: v.ed.version, files: [] };
+   for (const rel of relList){
+     const pr = await fetch('/api/data/presign', { method:'POST', credentials:'same-origin',
+       headers:{'content-type':'application/json'}, body: JSON.stringify({ path: rel }) });
+     if (!pr.ok){ fail('Upload failed - try signing in again.'); return; }
+     const file = await v.have[rel.toLowerCase()].handle.getFile();
+     await fetch((await pr.json()).url, { method:'PUT', body: file });
+     bytes += file.size; manifest.files.push({ path: rel, size: file.size }); done++;
+     if (bar) bar.firstElementChild.style.width = (done/relList.length*100)+'%';
+     if (note){ note.textContent = `Uploading ${v.ed.version}… ${done}/${relList.length} files, ${(bytes/1048576)|0} MB`; note.className='note muted'; }
+   }
+   await fetch('/api/data/presign', { method:'POST', credentials:'same-origin',
+     headers:{'content-type':'application/json'}, body: JSON.stringify({ manifest }) });
+   await cloudFetchMe(); cloudUpdateTile(); cloudOpenModal();     // now hasData → "Play from cloud"
+ }
+ (async function(){
+   try { const r = await fetch('/api/health', { credentials:'same-origin' }); if (!r.ok) return;
+     const h = await r.json(); if (!h.ok) return; cloudProviders = h.providers || {}; } catch(e){ return; }
+   await cloudFetchMe(); cloudUpdateTile();
+   const card = $('card-cloud'); card.hidden = false;
+   card.addEventListener('click', cloudOpenModal);
+   card.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); cloudOpenModal(); } });
+   const hc = $('help-cloud');
+   if (hc){ hc.addEventListener('click', e=>{ e.stopPropagation(); window.__modalOpen(
+       '<div class="m-kicker">Cloud Locker</div><h3 id="modal-title">Your data & saves, everywhere</h3>'
+     + '<p>Sign in with Google (Discord and Microsoft are coming) and your JA2 game data + savegames are '
+     + 'kept on your account. Log in on any machine and your locker is right there - no re-picking your '
+     + 'Data folder, no lost saves.</p>'
+     + '<h4>What we store</h4><ul><li>Your JA2 <b>Data</b> folder (verified against the known GOG/Steam '
+     + 'editions on upload).</li><li>Your savegames, synced automatically as you play.</li></ul>'
+     + '<p>Files live in your own private storage; nothing is shared or made public.</p>'); });
+     hc.addEventListener('keydown', e=>{ e.stopPropagation(); }); }
  })();
 
  // --- Return-visit fast path ---

@@ -20,6 +20,8 @@ port changes below.
 - `gzip_static` delivery + content-versioned engine paths (`e/<hash>/`).
 
 ### Fixed
+- False "running low on disk space" warning at end of turn - the browser VFS
+  reports 0 bytes free; `getFreeSpace` now reports plenty on wasm.
 - Tactical sector-load crash (wasm stack overflow) - `-sSTACK_SIZE=8MB`.
 - Garbled/loud audio (S16 samples fed to Web Audio as F32).
 - Several screen-transition busy-wait loops that froze the browser tab.

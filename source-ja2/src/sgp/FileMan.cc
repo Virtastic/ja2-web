@@ -54,6 +54,14 @@ void FileMan::eraseDir(const ST::string& dirPath)
 
 uint64_t FileMan::getFreeSpace(const ST::string& path)
 {
+#ifdef __EMSCRIPTEN__
+	// The browser virtual filesystem (MEMFS/IDBFS) has no meaningful free-space
+	// figure — statvfs reports 0 bytes free, which trips JA2's "running low on
+	// disk space" autosave warning (needs 20MB) at the end of every turn. Saves
+	// persist to IDBFS/OPFS regardless of this number, so report plenty.
+	(void)path;
+	return (uint64_t)4 * 1024 * 1024 * 1024;  // 4 GB
+#else
 	uint64_t bytes;
 	if (!Fs_freeSpace(path.c_str(), &bytes))
 	{
@@ -62,6 +70,7 @@ uint64_t FileMan::getFreeSpace(const ST::string& path)
 		return 0;
 	}
 	return bytes;
+#endif
 }
 
 

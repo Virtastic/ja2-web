@@ -100,6 +100,33 @@ example.com {
 Static hosts (Netlify, Cloudflare Pages, …) work too - set the same three
 headers in the host's headers config.
 
+## Cloud Locker (optional): sign-in + cloud saves & data
+
+The launcher's **Cloud Locker** tile lets players sign in (Discord / Google / Microsoft),
+upload their own JA2 `Data` folder once, and have their game data **and** saves follow them to
+any device. It's a small backend (`cloud/`) plus S3-compatible object storage - entirely
+**optional and dormant** until you configure it. Without it, the tile shows the providers as
+"Soon" and the game is bring-your-own-local exactly as before.
+
+How it works: the backend only authenticates and mints **presigned URLs**; the browser transfers
+game data and saves **directly to S3**, never through the backend. User records + manifests are
+small JSON objects in the bucket (no database). It's served same-origin at `/api/*`.
+
+To enable it:
+
+1. **Object storage** - an S3-compatible bucket (e.g. OVH Object Storage, AWS S3, MinIO). Add
+   **CORS** allowing your origin for `GET`/`PUT`/`DELETE`.
+2. **OAuth apps** - register an app at whichever of Discord / Google / Microsoft you want, each
+   with redirect URI `https://<your-host>/api/auth/<provider>/callback`. Only the providers you
+   configure appear as live sign-in buttons.
+3. **Config** - copy `cloud/.env.example` to `/opt/ja2/cloud.env` and fill in `JWT_SECRET`
+   (`openssl rand -hex 32`), the `S3_*` values, and the `<provider>_CLIENT_*` pairs.
+4. The bundled `docker-compose.prod.yml` already defines the `ja2-cloud` service and the edge
+   `deploy/ja2.caddy` already routes `/api/*` to it - `docker compose up -d` brings it online.
+
+Copyright note: hosting players' commercial `Data/*.slf` in their private per-user prefixes is
+their upload; keep the bucket private (never public-read).
+
 ## Browser support
 
 Desktop Chrome/Chromium/Edge/Brave only (SharedArrayBuffer + WebAssembly threads

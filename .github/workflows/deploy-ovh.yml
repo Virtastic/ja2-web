@@ -34,10 +34,17 @@ jobs:
       - name: Build image
         run: DOCKER_BUILDKIT=1 docker build --network=host -t ja2:ovh -f Dockerfile .
 
+      # Cloud Locker backend (small node image; no toolchain needed). Dormant until /opt/ja2/cloud.env
+      # is filled (see cloud/.env.example) - it still builds and runs, serving /api/health.
+      - name: Build cloud image
+        run: DOCKER_BUILDKIT=1 docker build --network=host -t ja2-cloud:ovh -f cloud/Dockerfile cloud
+
       - name: Sync compose to /opt/ja2
         run: |
           sudo mkdir -p /opt/ja2
           sudo cp docker-compose.prod.yml /opt/ja2/docker-compose.prod.yml
+          # env_file must exist or `compose up` fails; keep any operator-provided secrets untouched.
+          sudo test -f /opt/ja2/cloud.env || sudo touch /opt/ja2/cloud.env
 
       # Drop the vhost into the shared edge's sites dir (imported by /opt/edge/Caddyfile).
       - name: Install edge vhost

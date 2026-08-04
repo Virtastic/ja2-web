@@ -7,8 +7,17 @@
 # those response headers pass through this reverse_proxy. So this vhost deliberately does NOT set
 # them again (duplicate COOP/COEP breaks crossOriginIsolated) and does NOT `encode` (Cloudflare
 # compresses the raw wasm/data at the edge). No `import inject` - greenfield, no origin guard.
+# /api/* is the same-origin Cloud Locker backend (ja2-cloud); everything else is the static game
+# (ja2). Same-origin keeps the session cookie clean (no CORS to our own API) and lets the browser
+# transfer game data + saves directly to S3 via presigned URLs the backend mints. The API path
+# carries no COOP/COEP (JSON/redirects, not embedded) - ja2-cloud sets none and neither does this.
 ja2.virtastic.app {
 	tls /certs/virtastic.crt /certs/virtastic.key
 	import sec_headers
-	reverse_proxy ja2:80
+	handle /api/* {
+		reverse_proxy ja2-cloud:8080
+	}
+	handle {
+		reverse_proxy ja2:80
+	}
 }

@@ -29,9 +29,16 @@ $SSH "$TEST_HOST" "
   set -e
   docker network create $NET >/dev/null 2>&1 || true
   docker rm -f $NAME ja2-cloud >/dev/null 2>&1 || true
-  docker run -d --name ja2-cloud --network $NET --restart unless-stopped \
-    -e DEV_AUTH=1 -e DATA_DIR=/data -e JWT_SECRET=test-ja2-dev-secret -e BASE_URL='$BASE_URL' \
-    -v ja2-cloud-data:/data $CLOUD_TAG >/dev/null
+  # Operator-provided env (OAuth creds etc.) wins and is NEVER overwritten by a deploy; without it
+  # we fall back to a dev-auth instance so the Cloud tile is still demoable on a fresh box.
+  if [ -f /home/testapp/ja2-cloud.env ]; then
+    docker run -d --name ja2-cloud --network $NET --restart unless-stopped \
+      --env-file /home/testapp/ja2-cloud.env -v ja2-cloud-data:/data $CLOUD_TAG >/dev/null
+  else
+    docker run -d --name ja2-cloud --network $NET --restart unless-stopped \
+      -e DEV_AUTH=1 -e DATA_DIR=/data -e JWT_SECRET=test-ja2-dev-secret -e BASE_URL='$BASE_URL' \
+      -v ja2-cloud-data:/data $CLOUD_TAG >/dev/null
+  fi
   docker run -d --name $NAME --network $NET --restart unless-stopped -p ${PORT}:80 $TAG >/dev/null
 "
 

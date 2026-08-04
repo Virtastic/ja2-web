@@ -436,10 +436,14 @@ async function mirrorSavesToCloud(){
       live[n]=1; var mt=st.mtime.getTime();
       if (__cloudMirrored[n]===mt) continue;
       try {
+        var data = FS.readFile(__JA2_SAVES+'/'+n);
+        // Size up front: the server quota-checks it and (in S3 mode) binds it into the signed URL.
         var pr = await fetch('/api/saves/presign', { method:'POST', credentials:'same-origin',
-          headers:{'content-type':'application/json'}, body: JSON.stringify({ name:n, op:'put' }) });
+          headers:{'content-type':'application/json'}, body: JSON.stringify({ name:n, op:'put', size:data.length }) });
+        if (!pr.ok){ console.warn('[cloud-saves] '+n+' rejected ('+pr.status+') - not retrying this cycle');
+                     __cloudMirrored[n]=mt; continue; }   // remember it so we don't hammer the API
         var url = (await pr.json()).url;
-        var put = await fetch(url, { method:'PUT', mode:'cors', body: FS.readFile(__JA2_SAVES+'/'+n) });
+        var put = await fetch(url, { method:'PUT', mode:'cors', body: data });
         if (put.ok) __cloudMirrored[n]=mt;
       } catch(e){ console.warn('[cloud-saves] uploading '+n+' failed', e); }
     }

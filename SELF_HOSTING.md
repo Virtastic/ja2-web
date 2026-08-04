@@ -112,17 +112,24 @@ How it works: the backend only authenticates and mints **presigned URLs**; the b
 game data and saves **directly to S3**, never through the backend. User records + manifests are
 small JSON objects in the bucket (no database). It's served same-origin at `/api/*`.
 
+**Storage - two modes:**
+- **Local (default, simplest):** leave `S3_*` blank. Game data + saves persist to the `/data`
+  volume and the backend serves them itself. No object store, no CORS to configure - just a disk.
+- **S3:** fill in `S3_*`. The browser transfers **directly to S3** via presigned URLs (game data
+  never proxies through the backend); the bucket needs **CORS** allowing your origin for
+  `GET`/`PUT`/`DELETE`. Use this when you'd rather not host the bytes on the app server.
+
 To enable it:
 
-1. **Object storage** - an S3-compatible bucket (e.g. OVH Object Storage, AWS S3, MinIO). Add
-   **CORS** allowing your origin for `GET`/`PUT`/`DELETE`.
-2. **OAuth apps** - register an app at whichever of Discord / Google / Microsoft you want, each
+1. **OAuth apps** - register an app at whichever of Discord / Google / Microsoft you want, each
    with redirect URI `https://<your-host>/api/auth/<provider>/callback`. Only the providers you
    configure appear as live sign-in buttons.
-3. **Config** - copy `cloud/.env.example` to `/opt/ja2/cloud.env` and fill in `JWT_SECRET`
-   (`openssl rand -hex 32`), the `S3_*` values, and the `<provider>_CLIENT_*` pairs.
-4. The bundled `docker-compose.prod.yml` already defines the `ja2-cloud` service and the edge
-   `deploy/ja2.caddy` already routes `/api/*` to it - `docker compose up -d` brings it online.
+2. **Config** - copy `cloud/.env.example` to `/opt/ja2/cloud.env` and fill in `JWT_SECRET`
+   (`openssl rand -hex 32`), the `<provider>_CLIENT_*` pairs, and (only for S3 mode) the `S3_*`
+   values. For local mode, `S3_*` stays blank.
+3. The bundled `docker-compose.prod.yml` already defines the `ja2-cloud` service (with a
+   `/data` volume) and routes `/api/*` to it - the edge `deploy/ja2.caddy` in front, or the
+   image's own nginx if there's no edge. `docker compose up -d` brings it online.
 
 Copyright note: hosting players' commercial `Data/*.slf` in their private per-user prefixes is
 their upload; keep the bucket private (never public-read).

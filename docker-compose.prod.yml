@@ -9,16 +9,18 @@ services:
     restart: unless-stopped
     networks: [shared]
 
-  # Cloud Locker: OAuth login + S3 presign (see cloud/). The browser transfers game data + saves
-  # DIRECTLY to S3 via presigned URLs; this only authenticates and mints them. Dormant until
-  # cloud.env is filled (no JWT_SECRET in prod → it refuses to start, so keep the file present).
+  # Cloud Locker: OAuth login + game-data/save sync (see cloud/). Two storage modes, by env:
+  # with S3_* set, the browser transfers DIRECTLY to S3 via presigned URLs; with S3_* blank it
+  # persists to the mounted /data volume and serves blobs itself (no object store needed).
+  # Dormant until cloud.env exists (see cloud/.env.example); still serves /api/health meanwhile.
   ja2-cloud:
     image: ja2-cloud:ovh            # built + tagged by the deploy workflow on the runner
     container_name: ja2-cloud
     restart: unless-stopped
-    env_file: [/opt/ja2/cloud.env]  # secrets: JWT_SECRET, S3_*, <provider>_CLIENT_* (see cloud/.env.example)
+    env_file: [/opt/ja2/cloud.env]  # JWT_SECRET, then EITHER S3_* OR nothing (local /data), + <provider>_CLIENT_*
+    volumes: [/opt/ja2/cloud-data:/data]   # local-storage mode: users' game data + saves live here
     networks: [shared]
-    mem_limit: 256m
+    mem_limit: 512m
 
 networks:
   shared:

@@ -58,3 +58,6 @@ infra/terraform/*.tfstate
 infra/terraform/*.tfstate.*
 infra/terraform/*.tfvars
 infra/terraform/.terraform.lock.hcl
+
+# Jenkins test-pipeline infra values (hosts/keys) - never commit
+ci/jenkins/config.env

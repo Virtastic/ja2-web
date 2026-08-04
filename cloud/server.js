@@ -48,6 +48,22 @@ const MAX_TOTAL_BYTES = num('MAX_TOTAL_BYTES', 100 * 1024 * 1024 * 1024);// whol
 // Data files must look like game data. Blocks using the locker as a general file host.
 const DATA_EXT_OK = /\.(slf|dat|edt|lua|json|txt|ini|xml|wav|mp3|ogg|sti|pcx|tga|bmp|dds|npc|emi|dlg)$/i;
 
+// ---- "Is this actually JA2 data?" ---------------------------------------------------------------
+// An extension check is trivially defeated by renaming any file to .slf, so game-data uploads are
+// matched against the engine's own resource packs: the (path, size) pair must be a real file from a
+// supported retail edition, and the BYTES must hash to that edition's recorded MD5. Result: the
+// locker can only ever contain genuine game data - not arbitrary bytes wearing a .slf name.
+// Regenerate with `node cloud/build-editions.mjs`. VERIFY_DATA=0 downgrades to size-only (a
+// self-hoster with a modded or otherwise unlisted install may need this).
+const VERIFY_DATA = env.VERIFY_DATA !== '0';
+let EDITIONS = { files: {} };
+try { EDITIONS = JSON.parse(await fs.readFile(new URL('./ja2-editions.json', import.meta.url), 'utf8')); }
+catch { console.warn('ja2-editions.json missing - game-data verification disabled'); }
+const EDITION_PATHS = Object.keys(EDITIONS.files).length;
+// Returns the matching {size, md5} variants for a path, or [] if this is not a known game file.
+const knownVariants = (rel) => EDITIONS.files[rel.toLowerCase()] || [];
+const knownForSize = (rel, size) => knownVariants(rel).filter((v) => v.size === size);
+
 // A path is only ever accepted if it round-trips through this: no traversal, no absolute, no
 // backslashes (Windows separators would smuggle segments past a naive split), no dotfiles, bounded
 // depth/length, and a conservative charset. Returns the clean relative path or null.
@@ -93,8 +109,9 @@ function s3Store() {
     // A presigned PUT is a capability the browser uses unsupervised, so the SIZE is baked into the
     // signature (ContentLength). S3 then rejects any upload that isn't exactly that many bytes -
     // without this, a presigned PUT is an unlimited write and the quota check below is decorative.
-    urlFor(key, op, size) {
-      const cmd = op === 'put' ? new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentLength: size })
+    urlFor(key, op, size, md5) {
+      const cmd = op === 'put' ? new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentLength: size,
+          ...(md5 ? { ContentMD5: Buffer.from(md5, 'hex').toString('base64') } : {}) })
         : op === 'delete' ? new DeleteObjectCommand({ Bucket: BUCKET, Key: key })
         : new GetObjectCommand({ Bucket: BUCKET, Key: key });
       return getSignedUrl(s3, cmd, { expiresIn: op === 'get' ? 3600 : 900 });
@@ -136,16 +153,28 @@ function localStore() {
     // Streams to disk with a HARD byte ceiling. Content-Length is a client claim, so the limit is
     // enforced on the bytes actually seen: past `max` we destroy the stream and unlink the partial,
     // so a lying or chunked (no length) upload can't run the disk out.
-    async writeStream(key, stream, max) {
+    // `expect` (game data) is the list of acceptable {size, md5} variants for this path - a filename
+    // can exist in several editions. The bytes are hashed as they stream past and must match one
+    // variant exactly; otherwise the file is deleted and EBADHASH thrown, so unverified bytes are
+    // never left in the locker. Pass null for saves (arbitrary user data, bounded by size only).
+    async writeStream(key, stream, max, expect) {
       await fs.mkdir(path.dirname(abs(key)), { recursive: true });
       let seen = 0;
+      const hash = expect ? crypto.createHash('md5') : null;
       const guard = new Transform({ transform(chunk, _enc, cb) {
         seen += chunk.length;
         if (seen > max) { cb(Object.assign(new Error('too large'), { code: 'ETOOBIG' })); return; }
+        hash?.update(chunk);
         cb(null, chunk);
       } });
-      try { await pipeline(stream, guard, createWriteStream(abs(key))); }
-      catch (e) { await this.del(key).catch(() => {}); throw e; }
+      try {
+        await pipeline(stream, guard, createWriteStream(abs(key)));
+        if (hash) {
+          const digest = hash.digest('hex');
+          if (!expect.some((v) => v.size === seen && v.md5 === digest))
+            throw Object.assign(new Error('hash mismatch'), { code: 'EBADHASH' });
+        }
+      } catch (e) { await this.del(key).catch(() => {}); throw e; }
       return seen;
     },
     size(key) { return fs.stat(abs(key)).then((s) => s.size).catch(() => null); },
@@ -238,8 +267,10 @@ const usageCache = new Map();                                // uid -> {bytes, f
 const reserved = new Map();                                  // uid -> [{bytes, at}] in flight
 const USAGE_TTL = 10_000;
 // A reservation is only a promise to upload soon; a client that presigns and never PUTs must not
-// hold space forever. Entries expire with the presigned URL itself (15 min), so this self-heals.
-const RESERVE_TTL = 15 * 60_000;
+// hold space forever, so entries expire. The TTL is deliberately short: once the upload lands, the
+// next usage refresh counts the real bytes, and a long-lived reservation would double-count them
+// and spuriously exhaust the quota partway through a legitimate multi-file upload.
+const RESERVE_TTL = 120_000;
 function reservedBytes(uid) {
   const list = (reserved.get(uid) || []).filter((r) => Date.now() - r.at < RESERVE_TTL);
   if (list.length) reserved.set(uid, list); else reserved.delete(uid);
@@ -263,7 +294,10 @@ function release(uid, token) {                                // drop one reserv
 }
 // Returns {remaining} when there is room for `incoming` more bytes, else {error,...}. `replacingKey`
 // is the object about to be overwritten - its current size doesn't count against the new total.
-async function checkQuota(uid, incoming, replacingKey) {
+// `reserve` holds the space until the write finishes. Only S3 mode needs it: there the server never
+// sees the upload, so the reservation is the only record until usage refreshes. In local mode the
+// blob PUT does the real accounting - reserving at presign too would double-count every file.
+async function checkQuota(uid, incoming, replacingKey, reserve = false) {
   const u = await usageFor(uid);
   const existing = replacingKey ? ((await store.size?.(replacingKey)) ?? 0) : 0;
   const used = Math.max(0, u.bytes - existing) + reservedBytes(uid);
@@ -276,6 +310,7 @@ async function checkQuota(uid, incoming, replacingKey) {
     const total = await totalUsage();
     if (total + incoming > MAX_TOTAL_BYTES) return { error: 'server storage is full', serverFull: true };
   }
+  if (!reserve) return { remaining, release: () => {} };
   const token = { bytes: Math.max(0, incoming), at: Date.now() };
   reserved.set(uid, [...(reserved.get(uid) || []), token]);
   return { remaining, release: () => release(uid, token) };
@@ -289,6 +324,7 @@ async function totalUsage() {
 }
 
 app.get('/api/health', async () => ({ ok: true, storage: store.kind,
+  verifyData: Boolean(VERIFY_DATA && EDITION_PATHS), knownFiles: EDITION_PATHS,
   limits: { maxFileBytes: MAX_FILE_BYTES, maxSaveBytes: MAX_SAVE_BYTES, maxUserBytes: MAX_USER_BYTES, maxUserFiles: MAX_USER_FILES },
   providers: Object.fromEntries(Object.entries(PROVIDERS).map(([k, v]) => [k, Boolean(v.id && v.secret)])) }));
 
@@ -367,7 +403,7 @@ app.post('/api/saves/presign', async (req, reply) => {
     const size = Number(req.body?.size);
     if (!Number.isInteger(size) || size < 0 || size > MAX_SAVE_BYTES)
       return reply.code(413).send({ error: `save too large (max ${MAX_SAVE_BYTES} bytes)`, maxBytes: MAX_SAVE_BYTES });
-    const room = await checkQuota(u.uid, size, `${userPrefix(u.uid)}saves/${clean}`);
+    const room = await checkQuota(u.uid, size, `${userPrefix(u.uid)}saves/${clean}`, store.kind === "s3");
     if (room.error) return reply.code(413).send(room);
   }
   return { url: await store.urlFor(`${userPrefix(u.uid)}saves/${clean}`, op, Number(req.body?.size) || 0) };
@@ -396,6 +432,8 @@ app.post('/api/data/presign', async (req, reply) => {
       const p = safeRelPath(String(f?.path ?? ''), { requireDataExt: true });
       const sz = Number(f?.size);
       if (!p || !Number.isInteger(sz) || sz < 0 || sz > MAX_FILE_BYTES) return reply.code(400).send({ error: `bad manifest entry: ${String(f?.path).slice(0, 80)}` });
+      if (VERIFY_DATA && EDITION_PATHS && !knownForSize(p, sz).length)
+        return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${p}`, notGameData: true });
       total += sz; files.push({ path: p, size: sz });
     }
     if (total > MAX_USER_BYTES) return reply.code(413).send({ error: `over quota (max ${MAX_USER_BYTES} bytes)`, maxBytes: MAX_USER_BYTES });
@@ -408,9 +446,19 @@ app.post('/api/data/presign', async (req, reply) => {
   const sz = Number(size);
   if (!Number.isInteger(sz) || sz < 0 || sz > MAX_FILE_BYTES)
     return reply.code(413).send({ error: `file too large (max ${MAX_FILE_BYTES} bytes)`, maxBytes: MAX_FILE_BYTES });
-  const room = await checkQuota(u.uid, sz, `${userPrefix(u.uid)}data/${clean}`);
+  // Must be a real file from a supported edition, at exactly that edition's size.
+  const variants = VERIFY_DATA && EDITION_PATHS ? knownForSize(clean, sz) : null;
+  if (variants && !variants.length)
+    return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${clean}`, notGameData: true });
+  const room = await checkQuota(u.uid, sz, `${userPrefix(u.uid)}data/${clean}`, store.kind === "s3");
   if (room.error) return reply.code(413).send(room);
-  return { url: await store.urlFor(`${userPrefix(u.uid)}data/${clean}`, 'put', sz) };
+  // S3 mode: bind the expected MD5 into the signature so S3 itself rejects mismatched bytes (we
+  // never see them). Unambiguous only when the size pins a single variant; otherwise size+quota
+  // bound it and the client is told nothing extra. Local mode hashes the stream itself.
+  const one = variants && variants.length === 1 ? variants[0] : null;
+  const headers = (store.kind === 's3' && one) ? { 'Content-MD5': Buffer.from(one.md5, 'hex').toString('base64') } : undefined;
+  const url = await store.urlFor(`${userPrefix(u.uid)}data/${clean}`, 'put', sz, one?.md5);
+  return headers ? { url, headers } : { url };
 });
 
 // --- Blob endpoint (local storage only): the browser PUTs/GETs/DELETEs here instead of S3. The key
@@ -437,14 +485,22 @@ if (store.kind === 'local') {
       // Reject on the declared length first (cheap), then enforce for real while streaming.
       const declared = Number(req.headers['content-length']);
       if (Number.isFinite(declared) && declared > cap) return reply.code(413).send({ error: `too large (max ${cap} bytes)` });
-      const room = await checkQuota(u.uid, Number.isFinite(declared) ? declared : 0, safeKey);
+      // Game data must be a known file and is hash-verified while streaming. Saves are the user's
+      // own bytes - nothing to verify them against, so size + quota are the only bounds.
+      let expect = null;
+      if (isData && VERIFY_DATA && EDITION_PATHS) {
+        expect = knownVariants(clean);
+        if (!expect.length) return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${clean}`, notGameData: true });
+      }
+      const room = await checkQuota(u.uid, Number.isFinite(declared) ? declared : 0, safeKey, true);
       if (room.error) return reply.code(413).send(room);
       try {
-        const written = await store.writeStream(safeKey, req.body, Math.min(cap, room.remaining));
+        const written = await store.writeStream(safeKey, req.body, Math.min(cap, room.remaining), expect);
         bumpUsage(u.uid, written);
         return { ok: true, size: written };
       } catch (e) {
         if (e?.code === 'ETOOBIG') return reply.code(413).send({ error: 'too large / over quota' });
+        if (e?.code === 'EBADHASH') return reply.code(422).send({ error: 'file contents do not match any known Jagged Alliance 2 edition', notGameData: true });
         throw e;
       } finally { room.release(); }
     }

@@ -61,3 +61,7 @@ infra/terraform/.terraform.lock.hcl
 
 # Jenkins test-pipeline infra values (hosts/keys) - never commit
 ci/jenkins/config.env
+
+# Cloud Locker backend: installed deps (npm ci restores them) + filled secrets file.
+cloud/node_modules/
+cloud/.env

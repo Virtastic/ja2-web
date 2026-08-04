@@ -1,0 +1,18 @@
+{
+  "name": "ja2-cloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ja2-web cloud backend: OAuth login + S3 presign for game-data & save sync",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.658.0",
+    "@aws-sdk/s3-request-presigner": "^3.658.0",
+    "@fastify/cookie": "^10.0.1",
+    "fastify": "^5.1.0"
+  }
+}

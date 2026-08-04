@@ -55,6 +55,8 @@ COPY play/index.html play/launcher.html play/settings.html /usr/share/nginx/html
 COPY play/ja2-mov.mp4 /usr/share/nginx/html/
 # Social/OG preview image referenced by the pages' og:image / twitter:image meta.
 COPY play/og.png /usr/share/nginx/html/
+# Data-verification manifests (per-edition file sizes) for the Cloud Locker upload check.
+COPY play/data-manifests.json /usr/share/nginx/html/
 # Built engine artifacts from the builder stage, with their .gz siblings for
 # nginx gzip_static. (No ja2-gamedata.*/ja2-lean.* - upload-only.)
 COPY --from=builder /build/play/ja2.js      /usr/share/nginx/html/

@@ -1,13 +1,24 @@
 # Production compose for ja2.virtastic.app - synced to /opt/ja2/ on the OVH VPS.
-# One static-serving container joined to the shared `nostalgia` docker network; the shared edge
-# Caddy (edge-caddy) reaches it by name (ja2:80). Publishes NO host ports - only the edge talks to
-# it. Upload-only: no game data is hosted → no data volume. No database, no secrets → no env_file.
+# The static-serving container plus the Cloud Locker backend, both joined to the shared `nostalgia`
+# docker network; the shared edge Caddy reaches them by name (ja2:80, ja2-cloud:8080). Neither
+# publishes host ports - only the edge talks to them. The static build hosts NO game data (upload-only).
 services:
   ja2:
     image: ja2:ovh                  # built + tagged by the deploy workflow on the runner
     container_name: ja2
     restart: unless-stopped
     networks: [shared]
+
+  # Cloud Locker: OAuth login + S3 presign (see cloud/). The browser transfers game data + saves
+  # DIRECTLY to S3 via presigned URLs; this only authenticates and mints them. Dormant until
+  # cloud.env is filled (no JWT_SECRET in prod → it refuses to start, so keep the file present).
+  ja2-cloud:
+    image: ja2-cloud:ovh            # built + tagged by the deploy workflow on the runner
+    container_name: ja2-cloud
+    restart: unless-stopped
+    env_file: [/opt/ja2/cloud.env]  # secrets: JWT_SECRET, S3_*, <provider>_CLIENT_* (see cloud/.env.example)
+    networks: [shared]
+    mem_limit: 256m
 
 networks:
   shared:

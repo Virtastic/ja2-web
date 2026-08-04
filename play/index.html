@@ -362,6 +362,98 @@ async function mountOwnDataFolder(){
   return meta;
 }
 
+// ?src=cloud: same shape as mountOwnDataFolder, but the source is the user's own JA2 data uploaded
+// to their private S3 prefix (Cloud Locker). The backend returns a manifest of {path,size} with a
+// presigned GET url per file; we stream each into the SAME MEMFS target (/owndata/data), so the
+// engine reads it identically. Requires a signed-in session cookie + bucket CORS for our origin.
+async function mountCloudData(){
+  var r = await fetch('/api/data/manifest', { credentials:'same-origin' });
+  if (r.status === 401) throw new Error('Not signed in to the Cloud Locker');
+  if (!r.ok) throw new Error('Cloud storage is unavailable');
+  var files = (await r.json()).files || [];
+  if (!files.length) throw new Error('No JA2 data has been uploaded to your Cloud Locker yet');
+  addRunDependency('ja2-clouddata');
+  try {
+    try { FS.mkdirTree('/owndata/data'); } catch(e){}
+    var done=0, bytes=0, slf=0, total=files.length;
+    for (var i=0;i<files.length;i++){
+      var f = files[i], rel = f.path;
+      var slash = rel.lastIndexOf('/');
+      if (slash > 0){ try { FS.mkdirTree('/owndata/data/'+rel.slice(0,slash)); } catch(e){} }
+      var fr = await fetch(f.url, { mode:'cors' });
+      if (!fr.ok) throw new Error('Download failed for '+rel+' ('+fr.status+')');
+      var buf = new Uint8Array(await fr.arrayBuffer());
+      FS.writeFile('/owndata/data/'+rel, buf);
+      done++; bytes += buf.length; if (/\.slf$/i.test(rel)) slf++;
+      if (subEl) subEl.textContent = 'Downloading your Cloud Locker… '+done+'/'+total+' files, '+((bytes/1048576)|0)+' MB';
+    }
+    if (slf===0) throw new Error('Your Cloud Locker has no .slf data archives');
+    console.log('cloud-data: downloaded '+done+' files ('+((bytes/1048576)|0)+' MB, '+slf+' SLF) → /owndata/data');
+  } finally {
+    removeRunDependency('ja2-clouddata');
+  }
+  return {};
+}
+
+// --- Cloud save sync (?src=cloud) --------------------------------------------------------------
+// Parallel to the folder-saves mirror, against S3 via presigned URLs. S3 is the authoritative copy;
+// IDBFS is the working cache. Mirror IN at boot (remote -> MEMFS), mirror OUT on __ja2Sync (changed
+// files -> presigned PUT; removed files -> presigned DELETE), coalesced exactly like the folder path.
+var __cloudSaves = false, __cloudMirrored = {}, __cloudBusy = false, __cloudAgain = false;
+async function setupCloudSaves(){
+  try { FS.mkdirTree(__JA2_SAVES); } catch(e){}
+  var loaded=0;
+  try {
+    var r = await fetch('/api/saves', { credentials:'same-origin' });
+    if (!r.ok) throw new Error('list '+r.status);
+    var saves = (await r.json()).saves || [];
+    for (var i=0;i<saves.length;i++){
+      var name = saves[i].name; if (!name || name.indexOf('/')>=0) continue;
+      try {
+        var pr = await fetch('/api/saves/presign', { method:'POST', credentials:'same-origin',
+          headers:{'content-type':'application/json'}, body: JSON.stringify({ name: name, op:'get' }) });
+        var url = (await pr.json()).url;
+        var fr = await fetch(url, { mode:'cors' }); if (!fr.ok) continue;
+        FS.writeFile(__JA2_SAVES+'/'+name, new Uint8Array(await fr.arrayBuffer()));
+        try { __cloudMirrored[name]=FS.stat(__JA2_SAVES+'/'+name).mtime.getTime(); } catch(_){}
+        loaded++;
+      } catch(e){ console.warn('[cloud-saves] loading '+name+' failed', e); }
+    }
+  } catch(e){ console.warn('[cloud-saves] could not list your cloud saves', e); }
+  __cloudSaves = true;
+  console.log('[cloud-saves] '+(loaded?('loaded '+loaded+' save(s) from'):'syncing to')+' your Cloud Locker');
+  try { window.__ja2Sync(); } catch(e){}
+}
+async function mirrorSavesToCloud(){
+  if (!__cloudSaves) return;
+  if (__cloudBusy){ __cloudAgain=true; return; }
+  __cloudBusy=true;
+  var live={};
+  try {
+    var names=[]; try { names=FS.readdir(__JA2_SAVES).filter(function(n){ return n!=='.'&&n!=='..'; }); } catch(e){}
+    for (var i=0;i<names.length;i++){
+      var n=names[i], st; try { st=FS.stat(__JA2_SAVES+'/'+n); if(!FS.isFile(st.mode)) continue; } catch(e){ continue; }
+      live[n]=1; var mt=st.mtime.getTime();
+      if (__cloudMirrored[n]===mt) continue;
+      try {
+        var pr = await fetch('/api/saves/presign', { method:'POST', credentials:'same-origin',
+          headers:{'content-type':'application/json'}, body: JSON.stringify({ name:n, op:'put' }) });
+        var url = (await pr.json()).url;
+        var put = await fetch(url, { method:'PUT', mode:'cors', body: FS.readFile(__JA2_SAVES+'/'+n) });
+        if (put.ok) __cloudMirrored[n]=mt;
+      } catch(e){ console.warn('[cloud-saves] uploading '+n+' failed', e); }
+    }
+    for (var d in __cloudMirrored){ if(!live[d]){
+      try { var pr2 = await fetch('/api/saves/presign', { method:'POST', credentials:'same-origin',
+              headers:{'content-type':'application/json'}, body: JSON.stringify({ name:d, op:'delete' }) });
+            await fetch((await pr2.json()).url, { method:'DELETE', mode:'cors' }); } catch(e){}
+      delete __cloudMirrored[d];
+    } }
+  } catch(e){ console.warn('[cloud-saves] mirror to cloud failed', e); }
+  __cloudBusy=false;
+  if (__cloudAgain){ __cloudAgain=false; mirrorSavesToCloud(); }
+}
+
 // --- Content-versioned engine path. The build stamps __ENGINE_VERSION__ with a hash of ja2.wasm and
 // moves ja2.{js,wasm,data} into e/<hash>/, so every build's engine files live at a UNIQUE path.
 // Cloudflare therefore can NEVER serve a mismatched mix of two builds' files (a mismatched loader/wasm
@@ -398,20 +490,22 @@ var Module = {
         // Data source: ?src=local mounts the player's own JA2 folder; otherwise
         // the bundled sample package supplies /game/gamedata.
         var srcLocal = /[?&]src=local\b/.test(location.search);
-        if (srcLocal){
+        var srcCloud = /[?&]src=cloud\b/.test(location.search);
+        if (srcLocal || srcCloud){
           try {
-            var meta = await mountOwnDataFolder();
+            var meta = srcCloud ? await mountCloudData() : await mountOwnDataFolder();
             cfg.game_dir = '/owndata';
             if (meta && meta.resversion) cfg.resversion = meta.resversion;
-            // Wire this folder's ja2-web-saves <-> the engine so saved games live on disk. IDBFS is
-            // already loaded here (we're inside its syncfs(true) callback), so no reconcile race. Needs
-            // the read-write grant; falls back to browser storage if only read was allowed.
-            try { await setupFolderSaves(window.__ja2Dir); } catch(e){ console.warn('[saves] setup skipped', e); }
+            // Wire saves <-> the engine so saved games persist. IDBFS is already loaded here (we're
+            // inside its syncfs(true) callback), so no reconcile race. Cloud mirrors to S3; local
+            // mirrors to the ja2-web-saves folder on disk (needs the read-write grant).
+            if (srcCloud){ try { await setupCloudSaves(); } catch(e){ console.warn('[cloud-saves] setup skipped', e); } }
+            else { try { await setupFolderSaves(window.__ja2Dir); } catch(e){ console.warn('[saves] setup skipped', e); } }
           } catch(e){
-            console.error('own-data mount failed', e);
+            console.error((srcCloud?'cloud':'own')+'-data mount failed', e);
             statusEl.classList.remove('hide', 'indet');
             statusEl.classList.add('err');
-            if (ldStatusEl) ldStatusEl.textContent = 'Could not read your JA2 folder';
+            if (ldStatusEl) ldStatusEl.textContent = srcCloud ? 'Could not load your Cloud Locker' : 'Could not read your JA2 folder';
             subEl.textContent = (e && e.message || e) + ' - returning to the chooser…';
             setTimeout(function(){ location.href = 'launcher.html'; }, 2600);
             return;   // leave idbfs-restore held: never half-boot with no data
@@ -481,7 +575,7 @@ function restartGame(reason){
 }
 
 // Flush saves/config to IndexedDB. Called on interval, tab-hide, and by the game after saves.
-window.__ja2Sync = function(){ try { FS.syncfs(false, function(){}); } catch(e){} try { mirrorSavesToFolder(); } catch(e){} };
+window.__ja2Sync = function(){ try { FS.syncfs(false, function(){}); } catch(e){} try { mirrorSavesToFolder(); } catch(e){} try { mirrorSavesToCloud(); } catch(e){} };
 setInterval(window.__ja2Sync, 15000);
 document.addEventListener('visibilitychange', function(){
   if (document.visibilityState === 'hidden') window.__ja2Sync();

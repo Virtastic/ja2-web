@@ -26,10 +26,57 @@ PORT = int(os.environ.get('PORT', '8795'))
 # and drop straight into the game instead.
 LAUNCHER = os.environ.get('OPENMW_LAUNCHER', '1').strip().lower() not in ('0', 'false', 'no')
 
+# Dev-only: proxy /api/* to a locally-running ja2-cloud backend so the launcher's same-origin
+# fetch('/api/...') works in dev exactly like prod (where the edge Caddy routes /api to the
+# ja2-cloud container). Set CLOUD_API=http://localhost:8081 to enable. Off = /api 404s (the
+# Cloud tile just stays hidden), matching a deploy without the cloud service.
+CLOUD_API = os.environ.get('CLOUD_API', '').rstrip('/')
+
 class H(http.server.SimpleHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
 
+    def _proxy_api(self):
+        import urllib.request, urllib.error
+        # Don't follow redirects: the OAuth callback returns 302 + Set-Cookie that must reach the
+        # browser intact (urllib would follow it and drop the cookie).
+        class _NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *a, **k): return None
+        opener = urllib.request.build_opener(_NoRedirect)
+        length = int(self.headers.get('Content-Length', 0) or 0)
+        body = self.rfile.read(length) if length else None
+        req = urllib.request.Request(CLOUD_API + self.path, data=body, method=self.command)
+        for h in ('Content-Type', 'Cookie', 'Authorization', 'Accept'):
+            if self.headers.get(h):
+                req.add_header(h, self.headers.get(h))
+        try:
+            r = opener.open(req)
+            status, resp_headers, data = r.status, r.getheaders(), r.read()
+        except urllib.error.HTTPError as e:
+            status, resp_headers, data = e.code, list(e.headers.items()), e.read()
+        except Exception as e:
+            self.send_error(502, f'cloud proxy: {e}'); return
+        self.send_response(status)
+        for k, v in resp_headers:
+            if k.lower() in ('set-cookie', 'location', 'content-type'):
+                self.send_header(k, v)
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        if self.command != 'HEAD':
+            self.wfile.write(data)
+
+    def do_POST(self):
+        if CLOUD_API and self.path.startswith('/api/'):
+            return self._proxy_api()
+        self.send_error(501)
+
+    def do_PUT(self):
+        if CLOUD_API and self.path.startswith('/api/'):
+            return self._proxy_api()
+        self.send_error(501)
+
     def send_head(self):
+        if CLOUD_API and self.path.startswith('/api/'):
+            return self._proxy_api()
         # Launcher gate: only the bare root serves the chooser. The match is on the FULL path
         # incl. query, so anything with a query string - the launcher's own index.html?nomw /
         # index.html?src=local links, plus dev URLs like ?debug - passes straight through to

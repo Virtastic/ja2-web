@@ -22,3 +22,10 @@ echo "==> building $TAG from $(cat .source-commit 2>/dev/null || echo 'dirty tre
 DOCKER_BUILDKIT=1 docker build --network=host -t "$TAG" -f Dockerfile .
 echo "==> built $TAG"
 docker image inspect "$TAG" --format '    size: {{.Size}} bytes  created: {{.Created}}'
+
+# Cloud Locker backend image (small node build; no toolchain). Deployed alongside the static game
+# so the test site gets the full Cloud tile. Tag mirrors the engine tag's suffix (ja2:test -> ja2-cloud:test).
+CLOUD_TAG="${CLOUD_TAG:-ja2-cloud:${TAG#*:}}"
+echo "==> building $CLOUD_TAG"
+DOCKER_BUILDKIT=1 docker build --network=host -t "$CLOUD_TAG" -f cloud/Dockerfile cloud
+echo "==> built $CLOUD_TAG"

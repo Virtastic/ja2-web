@@ -426,10 +426,24 @@
  const note=(msg,cls)=>{ const n=$('local-note'); n.textContent=msg||''; n.className='note '+(cls||'muted'); };
 
  // Users often pick the install root, not "Data"; descend one level if a Data/data folder exists.
+ // Find the folder holding the .slf archives. Players pick the Data folder, the game folder, or a
+ // wrapper above it (GOG's Linux layout nests game/Data). We only ever step into CONVENTIONALLY
+ // named children - data, game, gamedata - never an arbitrary sweep: a granted directory handle can
+ // read everything inside it, so picking Documents by mistake must not enumerate the whole tree.
+ const DATA_DIR_NAMES = /^(data|data files|game|gamedata)$/i;
+ async function findDataDir(dir, depth = 3){
+   const subs = [];
+   for await (const [name, h] of dir.entries()){
+     if (h.kind === 'file' && /\.slf$/i.test(name)) return dir;          // .slf here: this is it
+     if (h.kind === 'directory' && DATA_DIR_NAMES.test(name)) subs.push(h);
+   }
+   if (depth <= 0) return null;
+   for (const h of subs){ const hit = await findDataDir(h, depth - 1); if (hit) return hit; }
+   return null;
+ }
  async function resolveDataDir(dir){
-   for await (const [name,h] of dir.entries())
-     if (h.kind==='directory' && name.toLowerCase()==='data') return { data:h, root:dir };
-   return { data:dir, root:dir };  // they picked the Data folder itself
+   const data = await findDataDir(dir);
+   return { data: data || dir, root: dir };
  }
  // Validate a JA2 data folder. Returns null if it has no .slf, else a summary.
  async function scanJA2(dataDir, rootDir){

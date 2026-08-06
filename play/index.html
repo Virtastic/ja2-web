@@ -492,6 +492,27 @@ async function mirrorSavesToFolder(){
 }
 window.__mirrorSaves = mirrorSavesToFolder;
 
+// Find the folder holding the game's .slf archives. Players pick the Data folder, the game folder,
+// or a wrapper above it (GOG's Linux layout nests game/Data). We only ever step into CONVENTIONALLY
+// named children - data, game, gamedata - never an arbitrary sweep: a granted directory handle can
+// read everything inside it, so picking Documents by mistake must not enumerate the whole tree. It
+// costs one listing and stops.
+var DATA_DIR_NAMES = /^(data|data files|game|gamedata)$/i;
+async function findDataDir(dir, depth){
+  if (depth == null) depth = 3;
+  var subs = [];
+  for await (const ent of dir.entries()){
+    if (ent[1].kind === 'file' && /\.slf$/i.test(ent[0])) return dir;      // .slf here: this is it
+    if (ent[1].kind === 'directory' && DATA_DIR_NAMES.test(ent[0])) subs.push(ent[1]);
+  }
+  if (depth <= 0) return null;
+  for (var i = 0; i < subs.length; i++){
+    var hit = await findDataDir(subs[i], depth - 1);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 // ?src=local: copy the player's OWN Jagged Alliance 2 "Data" folder (picked in
 // launcher.html and remembered as a FileSystemDirectoryHandle) into MEMFS at
 // /owndata/data. The engine's VFS then reads the SLF archives from there
@@ -520,10 +541,9 @@ async function mountOwnDataFolder(){
     if (perm !== 'granted') throw new Error('Read permission is not granted');
   }
 
-  // Users may pick the install root or the Data folder itself - descend if present.
-  var dataDir = dir;
-  for await (const ent of dir.entries())
-    if (ent[1].kind==='directory' && ent[0].toLowerCase()==='data'){ dataDir = ent[1]; break; }
+  // Users may pick the Data folder, the install root, or a wrapper above it.
+  var dataDir = await findDataDir(dir);
+  if (!dataDir) throw new Error('No .slf data archives were found in that folder');
 
   addRunDependency('ja2-owndata');
   try {
@@ -652,10 +672,12 @@ async function runCloudWizard(){
       }
       busy=true; wiz.setPick('Checking…', false);
       try {
-        // Descend into Data/ if the player picked the game folder.
-        var dir=picked;
-        for await (const ent of picked.entries())
-          if (ent[1].kind==='directory' && ent[0].toLowerCase()==='data'){ dir=ent[1]; break; }
+        // The player may pick the Data folder, the game folder, or a wrapper above either.
+        var dir = await findDataDir(picked);
+        if (!dir){
+          busy=false; wiz.setPick('Choose your Data folder', true);
+          return wiz.note('No .slf game archives were found in that folder. Pick your Jagged Alliance 2 Data folder (or the game folder that contains it) - tap the ? for where to find it.','err');
+        }
 
         var have={};                                     // pathLower -> {size,handle,rel}
         await (async function walk(h, prefix){

@@ -688,16 +688,18 @@ async function runCloudWizard(){
           }
         })(dir, '');
 
-        // Pick the edition with the MOST exact size matches (a ratio would favour a smaller edition).
+        // Identify the edition by which files are PRESENT, not by their exact sizes: the game shipped
+        // in many builds and a patched or re-released archive has a different length while still
+        // being that edition's file. Most names matched wins (a ratio would favour a smaller list).
         var best=null;
         manifests.forEach(function(ed){
-          var m=0; Object.keys(ed.files).forEach(function(p){ if (have[p] && have[p].size===ed.files[p]) m++; });
+          var m=0; Object.keys(ed.files).forEach(function(p){ if (have[p]) m++; });
           if (!best || m>best.matched) best={ ed:ed, matched:m, total:Object.keys(ed.files).length };
         });
         if (!best || best.matched/best.total < 0.85){
           busy=false; wiz.setPick('Choose your Data folder', true);
           return wiz.note('That does not look like a complete Jagged Alliance 2 Data folder ('
-            +(best?best.matched:0)+' of '+(best?best.total:0)+' files matched). Pick the Data folder of an unmodified install.','err');
+            +(best?best.matched:0)+' of '+(best?best.total:0)+' expected files found). Pick the Data folder of a full install.','err');
         }
         wiz.render(cloudNeededRows(best.ed));
         wiz.note(best.ed.name+' detected. Uploading…');

@@ -58,20 +58,21 @@ const MAX_TOTAL_BYTES = num('MAX_TOTAL_BYTES', 100 * 1024 * 1024 * 1024);// whol
 const DATA_EXT_OK = /\.(slf|dat|edt|lua|json|txt|ini|xml|wav|mp3|ogg|sti|pcx|tga|bmp|dds|npc|emi|dlg)$/i;
 
 // ---- "Is this actually JA2 data?" ---------------------------------------------------------------
-// An extension check is trivially defeated by renaming any file to .slf, so game-data uploads are
-// matched against the engine's own resource packs: the (path, size) pair must be a real file from a
-// supported retail edition, and the BYTES must hash to that edition's recorded MD5. Result: the
-// locker can only ever contain genuine game data - not arbitrary bytes wearing a .slf name.
-// Regenerate with `node cloud/build-editions.mjs`. VERIFY_DATA=0 downgrades to size-only (a
-// self-hoster with a modded or otherwise unlisted install may need this).
+// Uploads are matched by NAME against the file list of every supported edition (generated from the
+// engine's own resource packs by cloud/build-editions.mjs), so the locker holds game files rather
+// than whatever someone renames to .slf. Size and checksum are deliberately NOT required: Jagged
+// Alliance 2 shipped in many builds - retail, re-releases, regional and patched - and the recorded
+// hashes only cover the handful of editions we know. Demanding an exact match rejected a real GOG
+// copy over one patched archive, so name + the size/quota caps below are the guarantee. The bytes
+// live in a private, per-account, quota-bounded prefix, so a wrong file only costs its owner space.
+// VERIFY_DATA=0 turns the name check off entirely (unlisted or heavily modded installs).
 const VERIFY_DATA = env.VERIFY_DATA !== '0';
 let EDITIONS = { files: {} };
 try { EDITIONS = JSON.parse(await fs.readFile(new URL('./ja2-editions.json', import.meta.url), 'utf8')); }
 catch { console.warn('ja2-editions.json missing - game-data verification disabled'); }
 const EDITION_PATHS = Object.keys(EDITIONS.files).length;
-// Returns the matching {size, md5} variants for a path, or [] if this is not a known game file.
-const knownVariants = (rel) => EDITIONS.files[rel.toLowerCase()] || [];
-const knownForSize = (rel, size) => knownVariants(rel).filter((v) => v.size === size);
+// True when some supported edition ships a file at this path (case-insensitive).
+const isKnownFile = (rel) => Boolean(EDITIONS.files[rel.toLowerCase()]);
 
 // A path is only ever accepted if it round-trips through this: no traversal, no absolute, no
 // backslashes (Windows separators would smuggle segments past a naive split), no dotfiles, bounded
@@ -118,9 +119,8 @@ function s3Store() {
     // A presigned PUT is a capability the browser uses unsupervised, so the SIZE is baked into the
     // signature (ContentLength). S3 then rejects any upload that isn't exactly that many bytes -
     // without this, a presigned PUT is an unlimited write and the quota check below is decorative.
-    urlFor(key, op, size, md5) {
-      const cmd = op === 'put' ? new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentLength: size,
-          ...(md5 ? { ContentMD5: Buffer.from(md5, 'hex').toString('base64') } : {}) })
+    urlFor(key, op, size) {
+      const cmd = op === 'put' ? new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentLength: size })
         : op === 'delete' ? new DeleteObjectCommand({ Bucket: BUCKET, Key: key })
         : new GetObjectCommand({ Bucket: BUCKET, Key: key });
       return getSignedUrl(s3, cmd, { expiresIn: op === 'get' ? 3600 : 900 });
@@ -173,28 +173,19 @@ function localStore() {
     // Streams to disk with a HARD byte ceiling. Content-Length is a client claim, so the limit is
     // enforced on the bytes actually seen: past `max` we destroy the stream and unlink the partial,
     // so a lying or chunked (no length) upload can't run the disk out.
-    // `expect` (game data) is the list of acceptable {size, md5} variants for this path - a filename
-    // can exist in several editions. The bytes are hashed as they stream past and must match one
-    // variant exactly; otherwise the file is deleted and EBADHASH thrown, so unverified bytes are
-    // never left in the locker. Pass null for saves (arbitrary user data, bounded by size only).
-    async writeStream(key, stream, max, expect) {
+    // Streams to disk with a HARD byte ceiling. Content-Length is a client claim, so the limit is
+    // enforced on the bytes actually seen: past `max` we destroy the stream and unlink the partial,
+    // so a lying or chunked (no length) upload can't run the disk out.
+    async writeStream(key, stream, max) {
       await fs.mkdir(path.dirname(abs(key)), { recursive: true });
       let seen = 0;
-      const hash = expect ? crypto.createHash('md5') : null;
       const guard = new Transform({ transform(chunk, _enc, cb) {
         seen += chunk.length;
         if (seen > max) { cb(Object.assign(new Error('too large'), { code: 'ETOOBIG' })); return; }
-        hash?.update(chunk);
         cb(null, chunk);
       } });
-      try {
-        await pipeline(stream, guard, createWriteStream(abs(key)));
-        if (hash) {
-          const digest = hash.digest('hex');
-          if (!expect.some((v) => v.size === seen && v.md5 === digest))
-            throw Object.assign(new Error('hash mismatch'), { code: 'EBADHASH' });
-        }
-      } catch (e) { await this.del(key).catch(() => {}); throw e; }
+      try { await pipeline(stream, guard, createWriteStream(abs(key))); }
+      catch (e) { await this.del(key).catch(() => {}); throw e; }
       return seen;
     },
     size(key) { return fs.stat(abs(key)).then((s) => s.size).catch(() => null); },
@@ -452,27 +443,24 @@ app.post('/api/data/presign', async (req, reply) => {
       const p = safeRelPath(String(f?.path ?? ''), { requireDataExt: true });
       const sz = Number(f?.size);
       if (!p || !Number.isInteger(sz) || sz < 0 || sz > MAX_FILE_BYTES) return reply.code(400).send({ error: `bad manifest entry: ${String(f?.path).slice(0, 80)}` });
-      if (VERIFY_DATA && EDITION_PATHS && !knownForSize(p, sz).length)
+      if (VERIFY_DATA && EDITION_PATHS && !isKnownFile(p))
         return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${p}`, notGameData: true });
       total += sz; files.push({ path: p, size: sz });
     }
     if (total > MAX_USER_BYTES) return reply.code(413).send({ error: `over quota (max ${MAX_USER_BYTES} bytes)`, maxBytes: MAX_USER_BYTES });
 
-    // S3 mode never sees the bytes, so contents are verified HERE - at the commit point where the
-    // upload becomes playable. S3 reports a single-part PUT's MD5 as its ETag, so every object is
-    // checked against the editions list; anything that doesn't match (or was uploaded multipart, so
-    // its ETag isn't an MD5) is deleted and the commit refused. Local mode already hashed on write.
-    if (store.kind === 's3' && VERIFY_DATA && EDITION_PATHS) {
-      const bad = [];
+    // S3 mode never sees the bytes, so confirm here that every listed object actually exists and is
+    // the size the client claimed - a manifest must not point at objects that were never uploaded.
+    // Contents are not hashed: see the note on editions above (many builds, few recorded hashes).
+    if (store.kind === 's3') {
+      const missing = [];
       await Promise.all(files.map(async (f) => {
-        const key = `${userPrefix(u.uid)}data/${f.path}`;
-        const h = await store.head(key).catch(() => null);
-        const ok = h && !h.etag.includes('-') && knownVariants(f.path).some((v) => v.size === h.size && v.md5 === h.etag);
-        if (!ok) { bad.push(f.path); await store.del(key).catch(() => {}); }
+        const h = await store.head(`${userPrefix(u.uid)}data/${f.path}`).catch(() => null);
+        if (!h || h.size !== f.size) missing.push(f.path);
       }));
-      if (bad.length) return reply.code(422).send({
-        error: `these files are missing or do not match any known Jagged Alliance 2 edition: ${bad.slice(0, 5).join(', ')}${bad.length > 5 ? ` (+${bad.length - 5} more)` : ''}`,
-        notGameData: true, files: bad });
+      if (missing.length) return reply.code(422).send({
+        error: `these files were not uploaded: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ` (+${missing.length - 5} more)` : ''}`,
+        files: missing });
     }
     await store.putJson(`${userPrefix(u.uid)}data/manifest.json`, { files, updated: new Date().toISOString() });
     return { ok: true };
@@ -483,19 +471,14 @@ app.post('/api/data/presign', async (req, reply) => {
   const sz = Number(size);
   if (!Number.isInteger(sz) || sz < 0 || sz > MAX_FILE_BYTES)
     return reply.code(413).send({ error: `file too large (max ${MAX_FILE_BYTES} bytes)`, maxBytes: MAX_FILE_BYTES });
-  // Must be a real file from a supported edition, at exactly that edition's size.
-  const variants = VERIFY_DATA && EDITION_PATHS ? knownForSize(clean, sz) : null;
-  if (variants && !variants.length)
+  // Must be a file that some supported edition ships. Size is bounded but not pinned to an edition.
+  if (VERIFY_DATA && EDITION_PATHS && !isKnownFile(clean))
     return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${clean}`, notGameData: true });
   const room = await checkQuota(u.uid, sz, `${userPrefix(u.uid)}data/${clean}`, store.kind === "s3");
   if (room.error) return reply.code(413).send(room);
-  // S3 mode: bind the expected MD5 into the signature so S3 itself rejects mismatched bytes (we
-  // never see them). Unambiguous only when the size pins a single variant; otherwise size+quota
-  // bound it and the client is told nothing extra. Local mode hashes the stream itself.
-  const one = variants && variants.length === 1 ? variants[0] : null;
-  const headers = (store.kind === 's3' && one) ? { 'Content-MD5': Buffer.from(one.md5, 'hex').toString('base64') } : undefined;
-  const url = await store.urlFor(`${userPrefix(u.uid)}data/${clean}`, 'put', sz, one?.md5);
-  return headers ? { url, headers } : { url };
+  // ContentLength is still bound into the signature, so a presigned PUT cannot be used to write
+  // more than it asked for. No Content-MD5: that would pin the upload to one known build.
+  return { url: await store.urlFor(`${userPrefix(u.uid)}data/${clean}`, 'put', sz) };
 });
 
 // --- Blob endpoint (local storage only): the browser PUTs/GETs/DELETEs here instead of S3. The key
@@ -522,22 +505,18 @@ if (store.kind === 'local') {
       // Reject on the declared length first (cheap), then enforce for real while streaming.
       const declared = Number(req.headers['content-length']);
       if (Number.isFinite(declared) && declared > cap) return reply.code(413).send({ error: `too large (max ${cap} bytes)` });
-      // Game data must be a known file and is hash-verified while streaming. Saves are the user's
-      // own bytes - nothing to verify them against, so size + quota are the only bounds.
-      let expect = null;
-      if (isData && VERIFY_DATA && EDITION_PATHS) {
-        expect = knownVariants(clean);
-        if (!expect.length) return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${clean}`, notGameData: true });
-      }
+      // Game data must be a file some supported edition ships. Contents are not hashed (many builds);
+      // saves are the user's own bytes anyway. Size + quota are the bounds for both.
+      if (isData && VERIFY_DATA && EDITION_PATHS && !isKnownFile(clean))
+        return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${clean}`, notGameData: true });
       const room = await checkQuota(u.uid, Number.isFinite(declared) ? declared : 0, safeKey, true);
       if (room.error) return reply.code(413).send(room);
       try {
-        const written = await store.writeStream(safeKey, req.body, Math.min(cap, room.remaining), expect);
+        const written = await store.writeStream(safeKey, req.body, Math.min(cap, room.remaining));
         bumpUsage(u.uid, written);
         return { ok: true, size: written };
       } catch (e) {
         if (e?.code === 'ETOOBIG') return reply.code(413).send({ error: 'too large / over quota' });
-        if (e?.code === 'EBADHASH') return reply.code(422).send({ error: 'file contents do not match any known Jagged Alliance 2 edition', notGameData: true });
         throw e;
       } finally { room.release(); }
     }

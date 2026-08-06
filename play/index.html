@@ -702,41 +702,68 @@ async function runCloudWizard(){
         wiz.render(cloudNeededRows(best.ed));
         wiz.note(best.ed.name+' detected. Uploading…');
 
-        // Upload every present file; the row it belongs to ticks over as its files complete.
+        // Upload one file at a time, in the SAME order the checklist is drawn, so it fills top to
+        // bottom instead of appearing to tick at random. Sequential like openmw-web: the browser
+        // would happily run these in parallel, but each file is up to 512 MB and the server bills
+        // them against one quota - one at a time keeps memory flat and failures unambiguous.
         var rels = Object.keys(best.ed.files).filter(function(p){ return have[p]; });
-        var pend = {}; rels.forEach(function(p){ var k=rowKeyFor(p); pend[k]=(pend[k]||0)+1; });
+        var order = {}; cloudNeededRows(best.ed).forEach(function(r, i){ order[r.name.toLowerCase()] = i; });
+        rels.sort(function(a, b){ return (order[rowKeyFor(a)]|0) - (order[rowKeyFor(b)]|0); });
+        // A folder row stands for many files, so it reports "3/18" until its last one lands.
+        var total = {}, done = {};
+        rels.forEach(function(p){ var k=rowKeyFor(p); total[k]=(total[k]||0)+1; done[k]=0; });
         var doneBytes=0, totalBytes=rels.reduce(function(n,p){ return n+have[p].size; },0);
+        var uploaded=[], rejected=[];     // what landed, and what was refused as not-a-known-release
         for (var i=0;i<rels.length;i++){
-          var p=rels[i], k=rowKeyFor(p);
-          wiz.set(k,'busy');
+          var p=rels[i], k=rowKeyFor(p), many=total[k]>1;
+          wiz.set(k,'busy', many ? (done[k]+'/'+total[k]) : 'uploading…');
           var file=await have[p].handle.getFile();
           var pr=await fetch('/api/data/presign',{ method:'POST', credentials:'same-origin',
             headers:{'content-type':'application/json'}, body:JSON.stringify({ path:have[p].rel, size:file.size }) });
           if (!pr.ok){
             var msg=await pr.json().catch(function(){ return {}; });
+            // 422 = this file is not recognised game data. That is a fact about ONE file, so skip it
+            // and keep going; a single odd file in an otherwise genuine install must not throw away
+            // a gigabyte of good upload. Anything else (quota, auth, server) really is fatal.
+            if (pr.status === 422){ rejected.push(have[p].rel); wiz.set(k,'err','not a known release'); continue; }
             wiz.set(k,'err','failed'); busy=false; wiz.setPick('Choose your Data folder', true);
             return wiz.note(msg.error || 'Upload was refused. Try signing in again.','err');
           }
           var grant=await pr.json();
           var put=await fetch(grant.url,{ method:'PUT', body:file, headers:grant.headers||{} });
           if (!put.ok){
+            // A presigned PUT carries the expected size and, when the size identifies exactly one
+            // release, its checksum. Storage answers 400 when the bytes don't match that - i.e. the
+            // file is the right name and length but not the release we know. Skip it like a 422.
+            if (put.status === 400 && grant.headers && grant.headers['Content-MD5']){
+              rejected.push(have[p].rel); wiz.set(k,'err','not a known release'); continue;
+            }
             wiz.set(k,'err','failed'); busy=false; wiz.setPick('Choose your Data folder', true);
-            return wiz.note(have[p].rel+' failed to upload ('+put.status+').','err');
+            return wiz.note(have[p].rel+' failed to upload ('+put.status+').', 'err');
           }
-          doneBytes+=file.size;
-          if (--pend[k] <= 0) wiz.set(k,'done','in your locker');
+          uploaded.push(p);
+          doneBytes+=file.size; done[k]++;
+          if (done[k] >= total[k]) wiz.set(k,'done', many ? 'added' : 'uploaded');
+          else wiz.set(k,'busy', done[k]+'/'+total[k]);
           wiz.note('Uploading… '+Math.round(doneBytes/totalBytes*100)+'% ('+((doneBytes/1048576)|0)+' MB)');
         }
-        // Commit: the server re-verifies every object before the locker counts as usable.
+        if (!uploaded.length){
+          busy=false; wiz.setPick('Choose your Data folder', true);
+          return wiz.note('None of those files matched a known Jagged Alliance 2 release. Pick the Data folder of an unmodified retail install.','err');
+        }
+        // Commit ONLY what actually uploaded; the server re-verifies every listed object before the
+        // locker counts as usable, so a skipped file must not appear here.
         var mf=await fetch('/api/data/presign',{ method:'POST', credentials:'same-origin',
           headers:{'content-type':'application/json'},
-          body:JSON.stringify({ manifest:{ files: rels.map(function(p){ return { path:have[p].rel, size:have[p].size }; }) } }) });
+          body:JSON.stringify({ manifest:{ files: uploaded.map(function(p){ return { path:have[p].rel, size:have[p].size }; }) } }) });
         if (!mf.ok){
           var e2=await mf.json().catch(function(){ return {}; });
           busy=false; wiz.setPick('Choose your Data folder', true);
           return wiz.note(e2.error || 'The uploaded files could not be verified.','err');
         }
-        wiz.note('Done. Starting your game…','ok');
+        wiz.note(rejected.length
+          ? 'Added '+uploaded.length+' files. '+rejected.length+' were skipped because they do not match a known release ('+rejected.slice(0,3).join(', ')+(rejected.length>3?' and more':'')+') - the game will run without them. Starting…'
+          : 'Done. Starting your game…', 'ok');
         setTimeout(function(){ wiz.hide(); resolve(); }, 700);
       } catch(err){
         busy=false; wiz.setPick('Choose your Data folder', true);

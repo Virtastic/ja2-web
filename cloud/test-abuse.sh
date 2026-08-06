@@ -104,23 +104,22 @@ v2() { curl -s -b "$J2" -X POST -H 'content-type: application/json' -d "$1" "$B2
 hv=$(curl -s "$B2/api/health" | grep -c '"verifyData":true')
 [ "$hv" = 1 ] && pass "data verification is ON (allowlist loaded)" || fail "verification" "not enabled"
 
-# radarmaps.slf is a real GOG file: 1678333 bytes, md5 20cae0ef3128495f64c58ee5212390a5.
-c=$(v2 '{"path":"radarmaps.slf","size":1234}' | grep -c 'not a recognized'); [ "$c" = 1 ] \
-  && pass "known filename with WRONG size rejected" || fail "size must match edition" "accepted"
+# Policy: a file is accepted on NAME (some supported edition ships it). Size and checksum are not
+# pinned, because the game shipped in many builds - a patched archive is still that game's file.
+c=$(v2 '{"path":"radarmaps.slf","size":1234}' | grep -c '"url"'); [ "$c" = 1 ] \
+  && pass "known filename with a DIFFERENT size is accepted (other builds exist)" || fail "leniency" "rejected a known name on size"
 c=$(v2 '{"path":"totally-made-up.slf","size":1678333}' | grep -c 'not a recognized'); [ "$c" = 1 ] \
-  && pass "unknown filename rejected (not in any edition)" || fail "unknown file" "accepted"
+  && pass "unknown filename rejected (not shipped by any edition)" || fail "unknown file" "accepted"
 c=$(v2 '{"manifest":{"files":[{"path":"pirate-movie.slf","size":1678333}]}}' | grep -c 'not a recognized')
-[ "$c" = 1 ] && pass "manifest listing a non-JA2 file rejected" || fail "manifest allowlist" "accepted"
-# Right name, right size, WRONG BYTES: presign succeeds (name+size look real), the upload must not.
+[ "$c" = 1 ] && pass "manifest listing a non-JA2 filename rejected" || fail "manifest allowlist" "accepted"
+# Contents are no longer pinned: the right name at any plausible size uploads.
 U=$(v2 '{"path":"radarmaps.slf","size":1678333}' | sed 's/.*"url":"//;s/".*//')
 case "$U" in
   /api/blob/*)
-    pass "genuine name+size passes presign"
-    head -c 1678333 /dev/zero > "$TMP/fake.slf"          # correct size, junk contents
-    c=$(curl -s -o /dev/null -w '%{http_code}' -b "$J2" -X PUT --data-binary @"$TMP/fake.slf" "$B2$U")
-    [ "$c" = 422 ] && pass "correct size but WRONG CONTENTS rejected (md5 verified)" || fail "content verification" "got $c - junk accepted!"
-    [ -f "$TMP/data2/users/$UID_B/data/radarmaps.slf" ] && fail "unverified bytes" "left on disk" || pass "unverified bytes not left on disk" ;;
-  *) fail "genuine file presign" "rejected a real edition file: $U" ;;
+    head -c 1678333 /dev/zero > "$TMP/any.slf"
+    c=$(curl -s -o /dev/null -w '%{http_code}' -b "$J2" -X PUT --data-binary @"$TMP/any.slf" "$B2$U")
+    [ "$c" = 200 ] && pass "a known filename uploads regardless of build" || fail "upload" "got $c" ;;
+  *) fail "known file presign" "rejected: $U" ;;
 esac
 
 # --- saves are capped too -----------------------------------------------------------------------

@@ -17,7 +17,7 @@ import { Transform } from 'node:stream';
 import path from 'node:path';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
-import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const env = process.env;
@@ -125,6 +125,17 @@ function s3Store() {
         : new GetObjectCommand({ Bucket: BUCKET, Key: key });
       return getSignedUrl(s3, cmd, { expiresIn: op === 'get' ? 3600 : 900 });
     },
+    // ETag of a single-part PUT is the object's MD5 - that is how S3 mode verifies contents it never
+    // saw. Multipart ETags carry a "-<parts>" suffix and are NOT an MD5; the caller must treat those
+    // as unverifiable rather than trusting them.
+    async head(key) {
+      try {
+        const r = await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
+        return { size: r.ContentLength, etag: String(r.ETag || '').replace(/"/g, '') };
+      } catch (e) { if (e?.$metadata?.httpStatusCode === 404 || e?.name === 'NotFound') return null; throw e; }
+    },
+    del(key) { return s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })); },
+    size(key) { return this.head(key).then((h) => h?.size ?? null); },
     async usage(prefix) {                                    // {bytes,files} across ALL pages
       let bytes = 0, files = 0, ContinuationToken;
       do {
@@ -446,6 +457,23 @@ app.post('/api/data/presign', async (req, reply) => {
       total += sz; files.push({ path: p, size: sz });
     }
     if (total > MAX_USER_BYTES) return reply.code(413).send({ error: `over quota (max ${MAX_USER_BYTES} bytes)`, maxBytes: MAX_USER_BYTES });
+
+    // S3 mode never sees the bytes, so contents are verified HERE - at the commit point where the
+    // upload becomes playable. S3 reports a single-part PUT's MD5 as its ETag, so every object is
+    // checked against the editions list; anything that doesn't match (or was uploaded multipart, so
+    // its ETag isn't an MD5) is deleted and the commit refused. Local mode already hashed on write.
+    if (store.kind === 's3' && VERIFY_DATA && EDITION_PATHS) {
+      const bad = [];
+      await Promise.all(files.map(async (f) => {
+        const key = `${userPrefix(u.uid)}data/${f.path}`;
+        const h = await store.head(key).catch(() => null);
+        const ok = h && !h.etag.includes('-') && knownVariants(f.path).some((v) => v.size === h.size && v.md5 === h.etag);
+        if (!ok) { bad.push(f.path); await store.del(key).catch(() => {}); }
+      }));
+      if (bad.length) return reply.code(422).send({
+        error: `these files are missing or do not match any known Jagged Alliance 2 edition: ${bad.slice(0, 5).join(', ')}${bad.length > 5 ? ` (+${bad.length - 5} more)` : ''}`,
+        notGameData: true, files: bad });
+    }
     await store.putJson(`${userPrefix(u.uid)}data/manifest.json`, { files, updated: new Date().toISOString() });
     return { ok: true };
   }

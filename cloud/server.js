@@ -36,7 +36,12 @@ const ROOT_PREFIX = env.S3_PREFIX ? `${env.S3_PREFIX.replace(/^\/+|\/+$/g, '')}/
 const userPrefix = (uid) => `${ROOT_PREFIX}users/${uid}/`;
 
 // ---- Storage backend: S3 when configured, else local disk ---------------------------------------
-const USE_S3 = Boolean(env.S3_BUCKET && env.S3_ENDPOINT);
+// S3 needs ALL of endpoint+bucket+credentials. A half-filled config (bucket set, keys still blank)
+// would otherwise select S3 and fail every request at runtime, so it falls back to local disk with
+// a loud warning instead - a working locker beats a broken one.
+const S3_PARTIAL = Boolean(env.S3_BUCKET || env.S3_ENDPOINT || env.S3_ACCESS_KEY || env.S3_SECRET_KEY);
+const USE_S3 = Boolean(env.S3_BUCKET && env.S3_ENDPOINT && env.S3_ACCESS_KEY && env.S3_SECRET_KEY);
+if (S3_PARTIAL && !USE_S3) console.warn('S3 is only partly configured (need endpoint+bucket+access+secret) - using local disk storage');
 const DATA_DIR = env.DATA_DIR || '/data';
 
 // ---- Abuse limits -------------------------------------------------------------------------------

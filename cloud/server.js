@@ -58,22 +58,36 @@ const MAX_TOTAL_BYTES = num('MAX_TOTAL_BYTES', 100 * 1024 * 1024 * 1024);// whol
 const DATA_EXT_OK = /\.(slf|dat|edt|lua|json|txt|ini|xml|wav|mp3|ogg|sti|pcx|tga|bmp|dds|npc|emi|dlg)$/i;
 
 // ---- "Is this actually JA2 data?" ---------------------------------------------------------------
-// Uploads are matched by NAME against the file list of every supported edition (generated from the
-// engine's own resource packs by cloud/build-editions.mjs), so the locker holds game files rather
-// than whatever someone renames to .slf. Size and checksum are deliberately NOT required: Jagged
-// Alliance 2 shipped in many builds - retail, re-releases, regional and patched - and the recorded
-// hashes only cover the handful of editions we know. Demanding an exact match rejected a real GOG
-// copy over one patched archive, so name + the size/quota caps below are the guarantee. The bytes
-// live in a private, per-account, quota-bounded prefix, so a wrong file only costs its owner space.
-// VERIFY_DATA=0 turns the name check off entirely (unlisted or heavily modded installs).
+// Two tiers, because Jagged Alliance 2 shipped in many builds while the engine's resource packs
+// record hashes for only five of them (cloud/build-editions.mjs generates the list; installs we
+// have confirmed genuine can contribute variants via cloud/add-observed.mjs):
+//
+//   1. the client's hash matches a recorded build  -> accepted and marked verified.
+//   2. the name is one some edition ships AND the size is within SIZE_TOLERANCE of a recorded size
+//      -> accepted as an unrecognised build. This is what lets a patched or regional copy work.
+//
+// Anything else is refused. Demanding tier 1 outright rejected a real GOG copy over a single
+// patched archive, and no public hash list exists to close that gap, so tier 2 is the pragmatic
+// floor. The bytes land in a private, per-account, quota-bounded prefix, so a wrong file only ever
+// costs its owner space. VERIFY_DATA=0 turns both tiers off (unlisted or heavily modded installs).
 const VERIFY_DATA = env.VERIFY_DATA !== '0';
+const SIZE_TOLERANCE = Number.isFinite(Number(env.SIZE_TOLERANCE)) && Number(env.SIZE_TOLERANCE) > 0
+  ? Number(env.SIZE_TOLERANCE) : 0.05;                       // +/- 5%
 let EDITIONS = { files: {} };
 try { EDITIONS = JSON.parse(await fs.readFile(new URL('./ja2-editions.json', import.meta.url), 'utf8')); }
 catch { console.warn('ja2-editions.json missing - game-data verification disabled'); }
 const EDITION_PATHS = Object.keys(EDITIONS.files).length;
-// True when some supported edition ships a file at this path (case-insensitive).
-const isKnownFile = (rel) => Boolean(EDITIONS.files[rel.toLowerCase()]);
-
+const variantsOf = (rel) => EDITIONS.files[String(rel).toLowerCase()] || [];
+// Returns how a file was accepted: 'exact' (hash matches a recorded build), 'size' (known name,
+// plausible size), or null when it is not game data we know at all. `hash` is client-supplied, so
+// it can only ever UPGRADE trust - a wrong or absent hash simply falls through to the size tier.
+function classify(rel, size, hash) {
+  const variants = variantsOf(rel);
+  if (!variants.length) return null;
+  if (hash && variants.some((v) => v.md5 === String(hash).toLowerCase())) return 'exact';
+  const ok = variants.some((v) => Math.abs(v.size - size) <= v.size * SIZE_TOLERANCE);
+  return ok ? 'size' : null;
+}
 // A path is only ever accepted if it round-trips through this: no traversal, no absolute, no
 // backslashes (Windows separators would smuggle segments past a naive split), no dotfiles, bounded
 // depth/length, and a conservative charset. Returns the clean relative path or null.
@@ -335,7 +349,7 @@ async function totalUsage() {
 }
 
 app.get('/api/health', async () => ({ ok: true, storage: store.kind,
-  verifyData: Boolean(VERIFY_DATA && EDITION_PATHS), knownFiles: EDITION_PATHS,
+  verifyData: Boolean(VERIFY_DATA && EDITION_PATHS), knownFiles: EDITION_PATHS, sizeTolerance: SIZE_TOLERANCE,
   limits: { maxFileBytes: MAX_FILE_BYTES, maxSaveBytes: MAX_SAVE_BYTES, maxUserBytes: MAX_USER_BYTES, maxUserFiles: MAX_USER_FILES },
   providers: Object.fromEntries(Object.entries(PROVIDERS).map(([k, v]) => [k, Boolean(v.id && v.secret)])) }));
 
@@ -430,7 +444,7 @@ app.get('/api/data/manifest', async (req, reply) => {
 });
 app.post('/api/data/presign', async (req, reply) => {
   const u = requireUser(req, reply); if (!u) return;
-  const { path: rel, manifest, size } = req.body || {};
+  const { path: rel, manifest, size, md5 } = req.body || {};
 
   // Manifest write: bounded list of {path,size} that all pass the same path rules, and whose total
   // fits the quota. Stored normalized so a hostile manifest can't smuggle fields or fake sizes.
@@ -443,9 +457,12 @@ app.post('/api/data/presign', async (req, reply) => {
       const p = safeRelPath(String(f?.path ?? ''), { requireDataExt: true });
       const sz = Number(f?.size);
       if (!p || !Number.isInteger(sz) || sz < 0 || sz > MAX_FILE_BYTES) return reply.code(400).send({ error: `bad manifest entry: ${String(f?.path).slice(0, 80)}` });
-      if (VERIFY_DATA && EDITION_PATHS && !isKnownFile(p))
-        return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${p}`, notGameData: true });
-      total += sz; files.push({ path: p, size: sz });
+      let how = 'unchecked';
+      if (VERIFY_DATA && EDITION_PATHS) {
+        how = classify(p, sz, f?.md5);
+        if (!how) return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${p}`, notGameData: true });
+      }
+      total += sz; files.push({ path: p, size: sz, verified: how === 'exact' });
     }
     if (total > MAX_USER_BYTES) return reply.code(413).send({ error: `over quota (max ${MAX_USER_BYTES} bytes)`, maxBytes: MAX_USER_BYTES });
 
@@ -471,14 +488,18 @@ app.post('/api/data/presign', async (req, reply) => {
   const sz = Number(size);
   if (!Number.isInteger(sz) || sz < 0 || sz > MAX_FILE_BYTES)
     return reply.code(413).send({ error: `file too large (max ${MAX_FILE_BYTES} bytes)`, maxBytes: MAX_FILE_BYTES });
-  // Must be a file that some supported edition ships. Size is bounded but not pinned to an edition.
-  if (VERIFY_DATA && EDITION_PATHS && !isKnownFile(clean))
-    return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${clean}`, notGameData: true });
+  // Tier 1 (hash matches a recorded build) or tier 2 (known name, size within tolerance).
+  let how = 'unchecked';
+  if (VERIFY_DATA && EDITION_PATHS) {
+    how = classify(clean, sz, md5);
+    if (!how) return reply.code(422).send({
+      error: `not a recognized Jagged Alliance 2 data file: ${clean}`, notGameData: true });
+  }
   const room = await checkQuota(u.uid, sz, `${userPrefix(u.uid)}data/${clean}`, store.kind === "s3");
   if (room.error) return reply.code(413).send(room);
   // ContentLength is still bound into the signature, so a presigned PUT cannot be used to write
   // more than it asked for. No Content-MD5: that would pin the upload to one known build.
-  return { url: await store.urlFor(`${userPrefix(u.uid)}data/${clean}`, 'put', sz) };
+  return { url: await store.urlFor(`${userPrefix(u.uid)}data/${clean}`, 'put', sz), verified: how === 'exact' };
 });
 
 // --- Blob endpoint (local storage only): the browser PUTs/GETs/DELETEs here instead of S3. The key
@@ -507,7 +528,8 @@ if (store.kind === 'local') {
       if (Number.isFinite(declared) && declared > cap) return reply.code(413).send({ error: `too large (max ${cap} bytes)` });
       // Game data must be a file some supported edition ships. Contents are not hashed (many builds);
       // saves are the user's own bytes anyway. Size + quota are the bounds for both.
-      if (isData && VERIFY_DATA && EDITION_PATHS && !isKnownFile(clean))
+      if (isData && VERIFY_DATA && EDITION_PATHS
+          && !classify(clean, Number(req.headers['content-length']) || 0, req.headers['x-ja2-md5']))
         return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${clean}`, notGameData: true });
       const room = await checkQuota(u.uid, Number.isFinite(declared) ? declared : 0, safeKey, true);
       if (room.error) return reply.code(413).send(room);

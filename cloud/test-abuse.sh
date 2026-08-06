@@ -104,23 +104,25 @@ v2() { curl -s -b "$J2" -X POST -H 'content-type: application/json' -d "$1" "$B2
 hv=$(curl -s "$B2/api/health" | grep -c '"verifyData":true')
 [ "$hv" = 1 ] && pass "data verification is ON (allowlist loaded)" || fail "verification" "not enabled"
 
-# Policy: a file is accepted on NAME (some supported edition ships it). Size and checksum are not
-# pinned, because the game shipped in many builds - a patched archive is still that game's file.
-c=$(v2 '{"path":"radarmaps.slf","size":1234}' | grep -c '"url"'); [ "$c" = 1 ] \
-  && pass "known filename with a DIFFERENT size is accepted (other builds exist)" || fail "leniency" "rejected a known name on size"
+# Policy, two tiers: (1) the client's hash matches a recorded build -> verified; (2) known name and
+# a size within SIZE_TOLERANCE of a recorded size -> accepted as an unrecognised build. Else refused.
+# radarmaps.slf is a real GOG file: 1678333 bytes, md5 20cae0ef3128495f64c58ee5212390a5.
+r=$(v2 '{"path":"radarmaps.slf","size":1678333,"md5":"20cae0ef3128495f64c58ee5212390a5"}')
+echo "$r" | grep -q '"verified":true' && pass "tier 1: exact hash match is marked verified" || fail "tier 1" "not verified: $r"
+r=$(v2 '{"path":"radarmaps.slf","size":1700000}')
+echo "$r" | grep -q '"url"' && echo "$r" | grep -q '"verified":false' \
+  && pass "tier 2: known name, size +1.3% accepted as an unrecognised build" || fail "tier 2" "$r"
+r=$(v2 '{"path":"radarmaps.slf","size":1678333,"md5":"'"$(printf 'f%.0s' $(seq 1 32))"'"}')
+echo "$r" | grep -q '"verified":false' && pass "a wrong hash falls through to the size tier, never upgrades" || fail "hash trust" "$r"
+r=$(v2 '{"path":"radarmaps.slf","size":9000000}')
+echo "$r" | grep -q 'not a recognized' && pass "size wildly outside tolerance is refused" || fail "tolerance bound" "$r"
 c=$(v2 '{"path":"totally-made-up.slf","size":1678333}' | grep -c 'not a recognized'); [ "$c" = 1 ] \
-  && pass "unknown filename rejected (not shipped by any edition)" || fail "unknown file" "accepted"
+  && pass "unknown filename refused (no edition ships it)" || fail "unknown file" "accepted"
 c=$(v2 '{"manifest":{"files":[{"path":"pirate-movie.slf","size":1678333}]}}' | grep -c 'not a recognized')
-[ "$c" = 1 ] && pass "manifest listing a non-JA2 filename rejected" || fail "manifest allowlist" "accepted"
-# Contents are no longer pinned: the right name at any plausible size uploads.
-U=$(v2 '{"path":"radarmaps.slf","size":1678333}' | sed 's/.*"url":"//;s/".*//')
-case "$U" in
-  /api/blob/*)
-    head -c 1678333 /dev/zero > "$TMP/any.slf"
-    c=$(curl -s -o /dev/null -w '%{http_code}' -b "$J2" -X PUT --data-binary @"$TMP/any.slf" "$B2$U")
-    [ "$c" = 200 ] && pass "a known filename uploads regardless of build" || fail "upload" "got $c" ;;
-  *) fail "known file presign" "rejected: $U" ;;
-esac
+[ "$c" = 1 ] && pass "manifest listing a non-JA2 filename refused" || fail "manifest allowlist" "accepted"
+# The variant recorded from a confirmed-genuine install must verify exactly (see add-observed.mjs).
+r=$(v2 '{"path":"NPC_SPEECH.SLF","size":182015718,"md5":"420647ea51e219a6a734bad331e44774"}')
+echo "$r" | grep -q '"verified":true' && pass "an observed variant from a real install verifies exactly" || fail "observed variant" "$r"
 
 # --- saves are capped too -----------------------------------------------------------------------
 c=$(jsonp /api/saves/presign '{"name":"big.sav","op":"put","size":99999999}' | grep -c 'too large'); [ "$c" = 1 ] \

@@ -106,6 +106,16 @@
    letter-spacing:.14em; text-transform:uppercase; color:var(--faint); border:1px solid var(--line);
    border-radius:3px; padding:3px 6px}
  .cloud-who{font-size:13px; color:var(--muted); margin:2px 0} .cloud-who b{color:var(--gold-hi)}
+ .m-hr{height:1px; background:linear-gradient(90deg,transparent,rgba(201,165,74,.28),transparent); margin:20px 0 0}
+ .cloud-actions{display:flex; flex-direction:column; align-items:center; gap:10px; margin:16px 0 0}
+ /* Verification summary: what we found in the picked folder, confirmed before anything uploads. */
+ .cloud-sum{margin:14px 0 0; border:1px solid rgba(255,255,255,.09); border-radius:5px;
+   background:rgba(255,255,255,.03); padding:12px 14px; text-align:left}
+ .cloud-sum dl{display:grid; grid-template-columns:auto 1fr; gap:5px 14px; margin:0;
+   font-size:13px; line-height:1.5}
+ .cloud-sum dt{color:var(--faint); white-space:nowrap}
+ .cloud-sum dd{margin:0; color:var(--ink)}
+ .cloud-sum .bad{color:var(--err)} .cloud-sum .good{color:var(--ok)}
  .cloud-bar{height:6px; border-radius:3px; background:var(--panel-2); overflow:hidden; margin:10px 0}
  .cloud-bar>i{display:block; height:100%; width:0; background:var(--gold); transition:width .2s}
  .cloud-link{background:none; border:none; color:var(--faint); font-size:12px; cursor:pointer;
@@ -538,6 +548,7 @@
  const CLOUD_GLYPH = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 34a8 8 0 0 1-1-15.9A11 11 0 0 1 35 20a7 7 0 0 1 0 14"/><rect x="17" y="26" width="14" height="12" rx="2"/><path d="M20 26v-2a4 4 0 0 1 8 0v2"/><circle cx="24" cy="31" r="1.3" fill="currentColor" stroke="none"/></svg>';
  const esc = (s) => String(s||'').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
  let cloudMe = null;                         // null = signed out; else {uid,name,hasData}
+ let cloudPending = null;                    // last folder check, awaiting the player's confirmation
  async function cloudFetchMe(){
    try { const r = await fetch('/api/me', { credentials:'same-origin' }); cloudMe = r.ok ? await r.json() : null; }
    catch(e){ cloudMe = null; }
@@ -567,28 +578,59 @@
        + '<p class="note" id="cloud-note"></p>';
    }
    const who = '<div class="m-kicker">Cloud Locker &middot; signed in as '+esc(cloudMe.name)+'</div>';
+   const foot = '<div class="cloud-bar" id="cloud-bar" hidden><i></i></div>'
+     + '<div class="note muted" id="cloud-note"></div>'
+     + '<p style="margin-top:14px"><button class="cloud-link" id="cloud-signout">Sign out</button></p>';
    if (cloudMe.hasData){
      return who + '<h3 id="modal-title">Play from your locker</h3>'
-       + '<p>Your game data and saves live on your account. Play here on any device.</p>'
-       + '<div class="oauth-btns"><button class="oauth-btn" id="cloud-play"><span class="lbl">Play from cloud</span> ▸</button>'
-       + '<button class="oauth-btn" id="cloud-reupload"><span class="lbl">Replace uploaded data</span></button></div>'
-       + '<div class="cloud-bar" id="cloud-bar" hidden><i></i></div><div class="note muted" id="cloud-note"></div>'
-       + '<p style="margin-top:14px"><button class="cloud-link" id="cloud-signout">Sign out</button></p>';
+       + '<p>Your game data and saves live on your account. Sign in on any machine and it is'
+       + ' already there, nothing to re-pick.</p>'
+       + '<p class="cloud-actions"><button class="btn btn-ghost" id="cloud-play">Play from cloud <span class="arw">&#9656;</span></button>'
+       + '<button class="cloud-link" id="cloud-reupload">Replace uploaded data</button></p>'
+       + foot;
    }
+   // Same shape as the "bring your own" help: say exactly which folder, what is required, and what
+   // happens - then confirm what we actually found BEFORE anything is uploaded.
    return who + '<h3 id="modal-title">Upload your JA2 data</h3>'
-     + '<p>Point to the <b>Data</b> folder of your legal JA2 Gold install once. We verify it against the '
-     + 'known editions, then store it to your account so any device just logs in and plays.</p>'
-     + '<div class="oauth-btns"><button class="oauth-btn" id="cloud-upload"><span class="lbl">Choose your JA2 folder</span></button></div>'
-     + '<div class="cloud-bar" id="cloud-bar" hidden><i></i></div><div class="note muted" id="cloud-note"></div>'
-     + '<p style="margin-top:14px"><button class="cloud-link" id="cloud-signout">Sign out</button></p>';
+     + '<p>Upload your own copy of Jagged Alliance 2 once. After that it is waiting on any machine'
+     + ' you sign in from, and your saves go with it.</p>'
+
+     + '<h4>1 &middot; Find your Data folder</h4>'
+     + '<p>It is inside your Jagged Alliance 2 install:</p>'
+     + '<ul>'
+     + '<li><b>GOG</b>: <code>C:\\GOG Games\\Jagged Alliance 2 Gold\\Data</code></li>'
+     + '<li><b>Steam</b>: <code>...\\steamapps\\common\\Jagged Alliance 2\\Data</code><br>'
+     + '(Steam &rarr; right-click the game &rarr; Manage &rarr; Browse local files)</li>'
+     + '<li><b>Disc / other</b>: wherever you installed it, the <code>Data</code> subfolder.</li>'
+     + '</ul>'
+     + '<p>Tip: you can pick the <b>game folder itself</b> and it finds <code>Data</code> inside.</p>'
+
+     + '<h4>2 &middot; Windows: somewhere the browser can open</h4>'
+     + '<p>Browsers refuse to open folders inside protected system locations, which includes'
+     + ' <code>Program Files</code> and <code>Program Files (x86)</code> &mdash; where Steam installs'
+     + ' by default. Copy the folder to <b>Documents</b> or <b>Desktop</b> and pick it there. GOG'
+     + ' installs under <code>C:\\GOG Games\\</code> are already fine.</p>'
+
+     + '<h4>3 &middot; What gets checked</h4>'
+     + '<p>Only the retail files you already own. Every file is matched by <b>name, size and'
+     + ' checksum</b> against the known editions (GOG and the Steam Classic releases) as it goes up,'
+     + ' so nothing but genuine game data can land in your locker. You will see exactly what was'
+     + ' found and confirm it before anything is uploaded.</p>'
+
+     + '<h4>Your saves</h4>'
+     + '<p>A save goes up when the game writes one. Nothing is uploaded while you are simply playing.</p>'
+
+     + '<div class="m-hr"></div>'
+     + '<p class="cloud-actions"><button class="btn btn-ghost" id="cloud-upload">Choose your JA2 folder</button></p>'
+     + foot;
  }
  function cloudOpenModal(){
    const signedOut = !cloudMe;
    const body = window.__modalOpen(cloudModalHtml(), signedOut ? 'mp-modal' : '');
    if (signedOut){ renderCloudProviders(); return; }      // sign-in: the "Continue with X" buttons
    const play = body.querySelector('#cloud-play');       if (play)   play.onclick = () => { location.href = 'index.html?src=cloud'; };
-   const up   = body.querySelector('#cloud-upload');      if (up)     up.onclick = cloudUpload;
-   const re   = body.querySelector('#cloud-reupload');    if (re)     re.onclick = cloudUpload;
+   const up   = body.querySelector('#cloud-upload');      if (up)     up.onclick = cloudPick;
+   const re   = body.querySelector('#cloud-reupload');    if (re)     re.onclick = cloudPick;
    const so   = body.querySelector('#cloud-signout');     if (so)     so.onclick = async () => {
      await fetch('/api/auth/logout', { method:'POST', credentials:'same-origin' });
      await cloudFetchMe(); cloudUpdateTile(); cloudOpenModal();
@@ -636,22 +678,75 @@
    best.have = have;
    return best;
  }
+ // Step 1: pick the folder and CHECK it. Nothing is uploaded here - the result is shown for the
+ // player to confirm first, the same way the bring-your-own path reports what it found before
+ // starting. Uploading a wrong or partial folder is slow to discover and annoying to undo.
+ async function cloudPick(){
+   const note = $('cloud-note');
+   const fail = (msg) => { if(note){ note.textContent = msg; note.className = 'note err'; } };
+   if (!hasFSA){ fail('Folder upload needs Chrome, Edge or Brave on desktop.'); return; }
+   let picked;
+   try { picked = await window.showDirectoryPicker({ id:'ja2', mode:'read' }); }
+   catch(e){
+     if (e && e.name === 'AbortError') return;                    // cancelled the picker
+     if (e && (e.name === 'SecurityError' || /system files|blocklist/i.test((e && e.message) || ''))){
+       fail('That folder is in a location the browser will not open (Windows blocks Program Files, '
+          + 'including Steam\'s default folder). Copy your Data folder to Documents or Desktop and pick it there.');
+       return;
+     }
+     fail('Could not open that folder: ' + (e && e.message || e)); return;
+   }
+   const { data } = await resolveDataDir(picked);
+   if (note){ note.textContent = 'Checking folder…'; note.className = 'note muted'; }
+   let v; try { v = await verifyJA2Data(data); } catch(e){ fail('Could not read that folder.'); return; }
+   cloudPending = v;
+   cloudRenderCheck(v);
+ }
+
+ // The confirmation screen: exactly what was found, what is missing, and how big the upload is.
+ function cloudRenderCheck(v){
+   const bytes = Object.keys(v.ed.files).filter(p => v.have[p]).reduce((n,p) => n + v.have[p].size, 0);
+   const mb = bytes / 1048576;
+   const size = mb >= 1024 ? (mb/1024).toFixed(1)+' GB' : Math.round(mb)+' MB';
+   const rows = [
+     ['Edition',  esc(v.ed.name)],
+     ['Verified', `<span class="good">${v.matched} of ${v.total} files</span> matched by name and size`],
+   ];
+   if (v.mismatch.length) rows.push(['Wrong size', `<span class="bad">${v.mismatch.length} file(s)</span>`]);
+   if (v.missing.length)  rows.push(['Missing',    `<span class="${v.ok?'':'bad'}">${v.missing.length} file(s)</span>`
+     + (v.ok ? ' <span style="color:var(--faint)">(optional, skipped)</span>' : '')]);
+   rows.push(['Upload size', size]);
+   const dl = '<div class="cloud-sum"><dl>'
+     + rows.map(r => `<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join('') + '</dl></div>';
+
+   const body = window.__modalOpen(
+     '<div class="m-kicker">Cloud Locker &middot; check your folder</div>'
+     + `<h3 id="modal-title">${v.ok ? 'This looks like Jagged Alliance 2' : 'That folder does not look complete'}</h3>`
+     + (v.ok
+        ? '<p>Found a match against the known editions. Nothing has been uploaded yet &mdash; confirm'
+          + ' and it goes to your account, where only you can read it.</p>'
+        : '<p>The closest known edition is below. Pick the <b>Data</b> folder of a complete,'
+          + ' unmodified install &mdash; every file is checked by name, size and checksum, so a'
+          + ' partial or modified copy cannot be uploaded.</p>')
+     + dl
+     + '<div class="m-hr"></div>'
+     + '<p class="cloud-actions">'
+     + (v.ok ? '<button class="btn btn-ghost" id="cloud-confirm">Upload to my locker <span class="arw">&#9656;</span></button>' : '')
+     + '<button class="cloud-link" id="cloud-back">Choose a different folder</button></p>'
+     + '<div class="cloud-bar" id="cloud-bar" hidden><i></i></div>'
+     + '<div class="note muted" id="cloud-note"></div>');
+   const go = body.querySelector('#cloud-confirm'); if (go) go.onclick = cloudUpload;
+   const back = body.querySelector('#cloud-back');  if (back) back.onclick = cloudPick;
+ }
+
+ // Step 2: the player confirmed - now upload.
  async function cloudUpload(){
    const note = $('cloud-note'), bar = $('cloud-bar');
    const fail = (msg) => { if(note){ note.textContent = msg; note.className = 'note err'; } };
-   if (!hasFSA){ fail('Folder upload needs Chrome/Edge/Brave on desktop.'); return; }
-   let picked; try { picked = await window.showDirectoryPicker({ id:'ja2', mode:'read' }); } catch(e){ return; }
-   const { data } = await resolveDataDir(picked);
-   if (note){ note.textContent = 'Verifying your JA2 data…'; note.className = 'note muted'; }
-   let v; try { v = await verifyJA2Data(data); } catch(e){ fail('Could not read that folder.'); return; }
-   if (!v.ok){
-     const near = v.ed.name || v.ed.id;
-     fail(`That doesn't match a known JA2 install. Closest: ${near} - ${v.matched}/${v.total} files verified`
-       + (v.mismatch.length ? `, ${v.mismatch.length} wrong size` : '')
-       + (v.missing.length ? `, ${v.missing.length} missing` : '') + '. Pick a complete JA2 Data folder.');
-     return;
-   }
-   // Verified. Upload the recognized edition's files that are present (skip any missing optional ones).
+   const v = cloudPending;
+   if (!v || !v.ok){ fail('Pick your JA2 Data folder first.'); return; }
+   const btn = $('cloud-confirm'); if (btn) btn.disabled = true;
+   // Upload the recognized edition's files that are present (skip any missing optional ones).
    const relList = Object.keys(v.ed.files).filter(p => v.have[p]).map(p => v.have[p].rel);
    if (note){ note.textContent = `${v.ed.name} verified (${v.matched} files). Uploading…`; note.className = 'note ok'; }
    if (bar) bar.hidden = false;

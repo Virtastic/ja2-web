@@ -578,6 +578,63 @@ async function mountOwnDataFolder(){
   return meta;
 }
 
+// --- MD5 for upload verification ----------------------------------------------------------------
+// The known-good hashes shipped with the engine's resource packs are MD5 and the browser has no
+// native MD5, so this is the smallest correct implementation. It is fed in chunks, so a 200 MB
+// archive is never held in memory at once. Verified against the RFC 1321 test vectors.
+// Incremental MD5 over chunks. The known-good hashes we have from the engine's resource packs are
+// MD5, and the browser has no native MD5, so this is the smallest correct implementation that can
+// hash a 200 MB archive without ever holding it all in memory.
+function md5Ctx(){ return { s:[0x67452301,0xefcdab89,0x98badcfe,0x10325476], buf:new Uint8Array(64), len:0, total:0 }; }
+var MD5_K=(function(){ var k=[],i; for(i=0;i<64;i++) k[i]=(Math.abs(Math.sin(i+1))*4294967296)|0; return k; })();
+var MD5_S=[7,12,17,22,7,12,17,22,7,12,17,22,7,12,17,22, 5,9,14,20,5,9,14,20,5,9,14,20,5,9,14,20,
+           4,11,16,23,4,11,16,23,4,11,16,23,4,11,16,23, 6,10,15,21,6,10,15,21,6,10,15,21,6,10,15,21];
+function md5Block(c, b, off){
+  var M=[], i; for(i=0;i<16;i++) M[i]=b[off+i*4]|(b[off+i*4+1]<<8)|(b[off+i*4+2]<<16)|(b[off+i*4+3]<<24);
+  var A=c.s[0], B=c.s[1], C=c.s[2], D=c.s[3], F, g, t;
+  for(i=0;i<64;i++){
+    if(i<16){ F=(B&C)|(~B&D); g=i; }
+    else if(i<32){ F=(D&B)|(~D&C); g=(5*i+1)&15; }
+    else if(i<48){ F=B^C^D; g=(3*i+5)&15; }
+    else { F=C^(B|~D); g=(7*i)&15; }
+    F=(F+A+MD5_K[i]+M[g])|0; A=D; D=C; C=B;
+    B=(B+((F<<MD5_S[i])|(F>>>(32-MD5_S[i]))))|0;
+  }
+  c.s[0]=(c.s[0]+A)|0; c.s[1]=(c.s[1]+B)|0; c.s[2]=(c.s[2]+C)|0; c.s[3]=(c.s[3]+D)|0;
+}
+function md5Update(c, data){
+  c.total += data.length;
+  var i = 0;
+  if (c.len){ var need = 64 - c.len, take = Math.min(need, data.length);
+    c.buf.set(data.subarray(0, take), c.len); c.len += take; i = take;
+    if (c.len === 64){ md5Block(c, c.buf, 0); c.len = 0; } }
+  for (; i + 64 <= data.length; i += 64) md5Block(c, data, i);
+  if (i < data.length){ c.buf.set(data.subarray(i), 0); c.len = data.length - i; }
+}
+function md5Hex(c){
+  var bits = c.total * 8, pad = new Uint8Array(((c.len < 56) ? 56 : 120) - c.len + 8);
+  pad[0] = 0x80;
+  var lo = bits >>> 0, hi = Math.floor(c.total / 536870912);   // total*8 >>> 32
+  pad[pad.length-8]=lo&255; pad[pad.length-7]=(lo>>>8)&255; pad[pad.length-6]=(lo>>>16)&255; pad[pad.length-5]=(lo>>>24)&255;
+  pad[pad.length-4]=hi&255; pad[pad.length-3]=(hi>>>8)&255; pad[pad.length-2]=(hi>>>16)&255; pad[pad.length-1]=(hi>>>24)&255;
+  md5Update(c, pad); c.total -= pad.length;
+  var out='', i, j;
+  for(i=0;i<4;i++) for(j=0;j<4;j++) out += ('0'+(((c.s[i]>>>(j*8))&255).toString(16))).slice(-2);
+  return out;
+}
+// Hash a File by streaming it through in slices. onProgress reports bytes read so a 200 MB archive
+// does not look frozen.
+async function md5File(file, onProgress){
+  var CHUNK = 8 * 1024 * 1024, c = md5Ctx(), off = 0;
+  while (off < file.size){
+    var buf = await file.slice(off, off + CHUNK).arrayBuffer();
+    md5Update(c, new Uint8Array(buf));
+    off += CHUNK;
+    if (onProgress) onProgress(Math.min(off, file.size));
+  }
+  return md5Hex(c);
+}
+
 // --- Cloud Locker upload wizard (first ?src=cloud visit) ----------------------------------------
 // Ported from openmw-web: a checklist of the files the account still needs, three ownership
 // checkboxes that unlock the folder picker, then one folder pick that finds everything and uploads
@@ -715,13 +772,18 @@ async function runCloudWizard(){
         var total = {}, done = {};
         rels.forEach(function(p){ var k=rowKeyFor(p); total[k]=(total[k]||0)+1; done[k]=0; });
         var doneBytes=0, totalBytes=rels.reduce(function(n,p){ return n+have[p].size; },0);
-        var uploaded=[], rejected=[];     // what landed, and what was refused as not-a-known-release
+        var uploaded=[], rejected=[], digests={};     // what landed, and what was refused as not-a-known-release
         for (var i=0;i<rels.length;i++){
           var p=rels[i], k=rowKeyFor(p), many=total[k]>1;
-          wiz.set(k,'busy', many ? (done[k]+'/'+total[k]) : 'uploading…');
           var file=await have[p].handle.getFile();
+          // Hash first: an exact match against a recorded build is what gets a file accepted
+          // outright, rather than on the size-tolerance path.
+          wiz.set(k,'busy', many ? (done[k]+'/'+total[k]) : 'checking…');
+          var digest = await md5File(file);
+          wiz.set(k,'busy', many ? (done[k]+'/'+total[k]) : 'uploading…');
           var pr=await fetch('/api/data/presign',{ method:'POST', credentials:'same-origin',
-            headers:{'content-type':'application/json'}, body:JSON.stringify({ path:have[p].rel, size:file.size }) });
+            headers:{'content-type':'application/json'},
+            body:JSON.stringify({ path:have[p].rel, size:file.size, md5:digest }) });
           if (!pr.ok){
             var msg=await pr.json().catch(function(){ return {}; });
             // 422 = this file is not recognised game data. That is a fact about ONE file, so skip it
@@ -743,7 +805,7 @@ async function runCloudWizard(){
             wiz.set(k,'err','failed'); busy=false; wiz.setPick('Choose your Data folder', true);
             return wiz.note(have[p].rel+' failed to upload ('+put.status+').', 'err');
           }
-          uploaded.push(p);
+          uploaded.push(p); digests[p] = digest;
           doneBytes+=file.size; done[k]++;
           if (done[k] >= total[k]) wiz.set(k,'done', many ? 'added' : 'uploaded');
           else wiz.set(k,'busy', done[k]+'/'+total[k]);
@@ -757,7 +819,7 @@ async function runCloudWizard(){
         // locker counts as usable, so a skipped file must not appear here.
         var mf=await fetch('/api/data/presign',{ method:'POST', credentials:'same-origin',
           headers:{'content-type':'application/json'},
-          body:JSON.stringify({ manifest:{ files: uploaded.map(function(p){ return { path:have[p].rel, size:have[p].size }; }) } }) });
+          body:JSON.stringify({ manifest:{ files: uploaded.map(function(p){ return { path:have[p].rel, size:have[p].size, md5:digests[p] }; }) } }) });
         if (!mf.ok){
           var e2=await mf.json().catch(function(){ return {}; });
           busy=false; wiz.setPick('Choose your Data folder', true);

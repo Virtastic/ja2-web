@@ -172,40 +172,68 @@
   <div class="lkhelp-box">
     <button class="lkhelp-x" id="lkhelp-close" type="button" aria-label="Close">&times;</button>
     <div class="wz-kick">Finding your files</div>
-    <h2 class="wz-h" id="lkhelp-h">Where is my Data folder?</h2>
-    <p class="wz-p">Jagged Alliance 2 keeps everything the game needs in one folder called
-       <b>Data</b>. It holds the <code>.slf</code> archives such as
-       <code>JAGGED ALLIANCE 2.SLF</code> and <code>SPEECH.SLF</code>. You are looking for that
-       folder, not the game's shortcut and not the installer.</p>
+    <h2 class="wz-h" id="lkhelp-h">How to add your Jagged Alliance 2 files</h2>
+    <p class="wz-p">You need a copy of the game you already own, installed on this computer. This
+       page never downloads the game for you.</p>
 
-    <h3 class="lkhelp-h3">GOG.com</h3>
-    <p class="wz-p">In <b>GOG Galaxy</b>, open Jagged Alliance 2, click the gear beside <b>Play</b>
-       and choose <b>Manage installation &rsaquo; Show folder</b>. Without Galaxy it is wherever the
-       offline installer put it. The usual location is:</p>
+    <h3 class="lkhelp-h3">1. What we are looking for</h3>
+    <p class="wz-p">One folder, called <b>Data</b>, from your Jagged Alliance 2 install. You do not
+       pick files one by one &mdash; you pick that single folder and we read what we need from
+       inside it. It contains the game's <code>.slf</code> archives, for example:</p>
+    <ul class="lkhelp-ul">
+      <li><code>JAGGED ALLIANCE 2.SLF</code>, <code>SPEECH.SLF</code>, <code>MUSIC.SLF</code>,
+          <code>MAPS.SLF</code>, <code>SOUNDS.SLF</code>, <code>ANIMS.SLF</code> &hellip;</li>
+      <li>plus subfolders such as <code>TILECACHE</code> and <code>NPCDATA</code>.</li>
+    </ul>
+    <p class="wz-p">The list on the previous screen is the full set for your edition. Anything shown
+       there is read from your folder; nothing else is touched.</p>
+
+    <h3 class="lkhelp-h3">2. Where that folder is</h3>
+    <p class="wz-p"><b>GOG</b> &mdash; in GOG Galaxy, open Jagged Alliance 2, click the gear beside
+       <b>Play</b> and choose <b>Manage installation &rsaquo; Show folder</b>. Otherwise:</p>
     <ul class="lkhelp-ul">
       <li><b>Windows</b><br><code>C:\GOG Games\Jagged Alliance 2 Gold\Data</code></li>
       <li><b>Linux / macOS</b><br><code>~/GOG Games/Jagged Alliance 2 Gold/game/Data</code></li>
     </ul>
-
-    <h3 class="lkhelp-h3">Steam</h3>
-    <p class="wz-p">In Steam, right-click <b>Jagged Alliance 2</b> in your Library and choose
-       <b>Manage &rsaquo; Browse local files</b>. A window opens on the game folder; <b>Data</b> is
-       inside it. The usual location is:</p>
+    <p class="wz-p"><b>Steam</b> &mdash; right-click <b>Jagged Alliance 2</b> in your Library and
+       choose <b>Manage &rsaquo; Browse local files</b>. A window opens on the game folder;
+       <b>Data</b> is inside it. Usually:</p>
     <ul class="lkhelp-ul">
       <li><b>Windows</b><br><code>C:\Program Files (x86)\Steam\steamapps\common\Jagged Alliance 2\Data</code></li>
     </ul>
-    <p class="wz-p lkhelp-tip">Windows blocks the browser from opening folders inside
-       <code>Program Files</code>, which is where Steam installs by default. Copy the <b>Data</b>
-       folder to <b>Documents</b> or <b>Desktop</b> and pick it there. GOG installs under
-       <code>C:\GOG Games\</code> are already fine.</p>
+    <p class="wz-p"><b>Disc or other install</b> &mdash; wherever you installed it, the <b>Data</b>
+       subfolder inside the game folder.</p>
+    <p class="wz-p lkhelp-tip">Not sure you have the right one? The correct folder has files ending
+       in <code>.slf</code> directly inside it. If you can see <code>ja2.exe</code> but no
+       <code>.slf</code> files, you are one level too high &mdash; open <b>Data</b> inside it. You
+       can also just pick the game folder itself and we will find <code>Data</code> for you.</p>
 
-    <h3 class="lkhelp-h3">How to tell you have the right folder</h3>
-    <p class="wz-p">It contains files ending in <code>.slf</code>, and subfolders such as
-       <code>TILECACHE</code>. If you see <code>ja2.exe</code> but no <code>.slf</code> files you are
-       one level too high: open <b>Data</b> inside it. You can also just pick the game folder and we
-       find <code>Data</code> inside.</p>
-    <p class="wz-p lkhelp-tip">Nothing leaves your machine except the files listed on the previous
-       screen, and they go only to your own account's private locker.</p>
+    <h3 class="lkhelp-h3">3. Uploading it</h3>
+    <ul class="lkhelp-ul">
+      <li>Tick the three confirmation boxes (they unlock the button).</li>
+      <li>Click <b>Choose your Data folder</b>.</li>
+      <li>Your browser opens a folder picker. Select the <b>Data</b> folder and confirm when it asks
+          for permission to view it.</li>
+      <li>Each file is checked and uploaded, ticking off the list as it goes. A full install is
+          around 1&ndash;1.5&nbsp;GB, so it takes a few minutes on a normal connection.</li>
+      <li>When it finishes the game starts by itself. You only do this once &mdash; after that,
+          signing in on any computer is enough.</li>
+    </ul>
+
+    <h3 class="lkhelp-h3">If it does not work</h3>
+    <ul class="lkhelp-ul">
+      <li><b>"Windows blocks this folder"</b> &mdash; browsers refuse to open anything inside
+          <code>Program Files</code>, which is where Steam installs by default. Copy the <b>Data</b>
+          folder to <b>Documents</b> or <b>Desktop</b> and pick the copy. GOG installs under
+          <code>C:\GOG Games\</code> are fine as they are.</li>
+      <li><b>"Does not look like a complete install"</b> &mdash; the folder is missing files, or is a
+          modified/modded copy. Only unmodified retail files are accepted, because every file is
+          checked by name, size and checksum.</li>
+      <li><b>No folder picker appears</b> &mdash; use Chrome, Edge or Brave on a desktop computer.
+          Firefox and Safari cannot open folders this way.</li>
+    </ul>
+    <p class="wz-p lkhelp-tip">Nothing leaves your machine except the game files listed on the
+       previous screen, and they go only to your own account's private locker.</p>
   </div>
 </div>
 <div id="lkwiz" role="dialog" aria-modal="true" aria-labelledby="lkwiz-h">
@@ -1028,12 +1056,16 @@ Module.onGameReady = function(){ window.__ja2Booted = true; startPump(); layoutC
 // Data source depends on how the chooser (launcher.html) sent us here:
 //  • ?src=local - the player's own JA2 "Data" folder is copied into MEMFS in
 //    preRun; no bundled package is loaded (that's the whole point - no download).
+//  • ?src=cloud - same, but the files come from the player's Cloud Locker (and the
+//    upload wizard runs first if it is empty). Also NO bundled package: asking for
+//    one here 404s on an upload-only deployment and bounces to the chooser, which
+//    is exactly what used to make the Cloud Locker look like it did nothing.
 //  • default - load the bundled sample data package. It hooks
 //    Module.addRunDependency, so it MUST run before ja2.js.
 (function(){
   function load(src, cb, errCb){ var s=document.createElement('script'); s.src=src; if(cb) s.onload=cb; if(errCb) s.onerror=errCb; document.body.appendChild(s); }
   var s = location.search;
-  if (/[?&]src=local\b/.test(s)) load(__ENGINE_DIR + 'ja2.js');   // own folder (mounted in preRun)
+  if (/[?&]src=(local|cloud)\b/.test(s)) load(__ENGINE_DIR + 'ja2.js');   // mounted in preRun
   else load('ja2-gamedata.js', function(){ load(__ENGINE_DIR + 'ja2.js'); }, // default → full bundled sample
     function(){
       // Production is upload-only: no bundled data package is deployed, so any

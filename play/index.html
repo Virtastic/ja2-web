@@ -61,10 +61,178 @@
     #status::before,#status .ld-glyph{animation:none}
     #status.indet .ld-fill{animation:none;width:100%}
   }
+ /* --- Storage-locker upload wizard (first multiplayer visit) --- */
+ /* "Where is my Data Files folder?" — the one step people actually get stuck on, so it gets
+    a proper sheet rather than a tooltip. Above the wizard (9100) since it opens from it. */
+ #lkhelp{position:fixed;inset:0;z-index:9200;display:none;align-items:flex-start;
+   justify-content:center;padding:24px;background:radial-gradient(140% 120% at 50% 0%,#181209,#000 70%);
+   overflow-y:auto;font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+ #lkhelp.show{display:flex}
+ #lkhelp .lkhelp-box{position:relative;width:100%;max-width:600px;margin:auto;
+   background:linear-gradient(160deg,#1e1711,#16110d);border:1px solid rgba(138,104,56,.5);
+   border-radius:10px;padding:34px 36px 30px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+ #lkhelp .lkhelp-x{position:absolute;top:12px;right:14px;width:30px;height:30px;border:none;
+   background:none;color:#7c705c;font-size:22px;line-height:1;cursor:pointer;border-radius:50%}
+ #lkhelp .lkhelp-x:hover{color:#e8c86a}
+ #lkhelp .lkhelp-h3{margin:22px 0 8px;font:600 15px/1.3 "Optima","Gill Sans",sans-serif;
+   letter-spacing:.04em;color:#e8c86a}
+ #lkhelp .lkhelp-ul{margin:0 0 4px;padding-left:18px;color:#b9a888;font-size:13.5px;line-height:1.75}
+ #lkhelp .lkhelp-ul li{margin-bottom:9px}
+ #lkhelp code{background:rgba(8,6,3,.55);border:1px solid rgba(138,104,56,.35);border-radius:3px;
+   padding:1px 5px;font:12.5px/1.5 ui-monospace,Menlo,monospace;color:#d8c9a8;
+   word-break:break-all}
+ #lkhelp .lkhelp-mut{color:#8a7a5a;font-size:12.5px}
+ #lkhelp .lkhelp-tip{color:#8a7a5a;font-size:13px;font-style:italic}
+ /* The "?" on the wizard header, same language as the launcher's card help icons. */
+ #lkwiz .wz-help{position:absolute;top:18px;right:18px;width:24px;height:24px;display:flex;
+   align-items:center;justify-content:center;border-radius:50%;border:1px solid #6b5433;
+   background:rgba(8,6,3,.5);color:#c69a52;font:600 13px/1 Georgia,"Times New Roman",serif;
+   cursor:pointer;transition:color .16s ease,border-color .16s ease,background .16s ease}
+ #lkwiz .wz-help:hover{color:#e8c86a;border-color:#e8c86a;background:rgba(211,168,78,.14)}
+ #lkwiz .wz{position:relative}
+ #lkwiz{position:fixed;inset:0;z-index:9100;display:none;align-items:center;justify-content:center;
+   padding:24px;background:radial-gradient(140% 120% at 50% 0%,#181209,#000 70%);overflow-y:auto;
+   font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+ #lkwiz.show{display:flex}
+ #lkwiz .wz{width:100%;max-width:560px;margin:auto;
+   background:linear-gradient(160deg,#1e1711,#16110d);border:1px solid rgba(138,104,56,.5);
+   border-radius:10px;padding:34px 36px 30px;box-shadow:0 30px 90px rgba(0,0,0,.6)}
+ #lkwiz .wz-kick{font:600 10.5px/1 "Optima","Gill Sans",sans-serif;letter-spacing:.22em;
+   text-transform:uppercase;color:#7c705c}
+ #lkwiz .wz-h{margin:6px 0 0;font-family:"Hoefler Text","Baskerville",Georgia,serif;font-weight:600;
+   font-size:25px;color:#ece0c6}
+ #lkwiz .wz-p{margin:8px 0 0;font-size:14px;line-height:1.6;color:#a5987e}
+ #lkwiz .wz-list{list-style:none;margin:22px 0 0;padding:0}
+ #lkwiz .wz-li{display:flex;align-items:center;gap:13px;padding:11px 13px;border-radius:7px;
+   border:1px solid rgba(58,46,32,.8);background:rgba(8,6,3,.4);margin-bottom:8px}
+ #lkwiz .wz-li .ic{width:22px;height:22px;flex:none;border-radius:50%;display:flex;align-items:center;
+   justify-content:center;border:1.5px solid #3a2e20;color:#7c705c;font-size:13px;transition:all .2s ease}
+ #lkwiz .wz-li .nm{flex:1;font:600 14px/1.2 ui-monospace,Menlo,Consolas,monospace;color:#ece0c6}
+ #lkwiz .wz-li .st{font-size:12px;color:#7c705c;text-align:right;min-width:74px}
+ #lkwiz .wz-li .tag{font:600 9.5px/1 "Optima",sans-serif;letter-spacing:.12em;text-transform:uppercase;
+   color:#6a5f4d;border:1px solid #3a2e20;border-radius:3px;padding:3px 6px;margin-left:2px}
+ #lkwiz .wz-li.opt .nm{color:#a5987e}
+ #lkwiz .wz-li.busy{border-color:rgba(198,154,82,.55)}
+ #lkwiz .wz-li.busy .ic{border-color:#c69a52;color:#c69a52;animation:ldSpin 1.1s linear infinite}
+ #lkwiz .wz-li.done{border-color:rgba(169,196,138,.5)}
+ #lkwiz .wz-li.done .ic{border-color:#a9c48a;background:#a9c48a;color:#101008}
+ #lkwiz .wz-li.done .st{color:#a9c48a}
+ #lkwiz .wz-li.err .ic{border-color:#e0836a;color:#e0836a}
+ #lkwiz .wz-li.err .st{color:#e0836a}
+ #lkwiz .wz-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;width:100%;
+   box-sizing:border-box;margin-top:20px;padding:13px 20px;border-radius:6px;cursor:pointer;border:1px solid;
+   font:600 12.5px/1 "Optima","Gill Sans",sans-serif;letter-spacing:.12em;text-transform:uppercase;
+   background:linear-gradient(180deg,#d3a84e,#8a6838);color:#1a1207;border-color:#eecb78;
+   transition:filter .15s ease}
+ #lkwiz .wz-btn:hover{filter:brightness(1.08)} #lkwiz .wz-btn[disabled]{opacity:.5;cursor:default;filter:none}
+ #lkwiz .wz-note{margin:14px 0 0;min-height:18px;font-size:13px;line-height:1.5;color:#a5987e}
+ #lkwiz .wz-note.err{color:#e0836a} #lkwiz .wz-note.ok{color:#a9c48a}
+ #lkwiz .wz-eula-lead{margin:22px 0 0;text-align:left;font-size:12.5px;line-height:1.55;color:#a5987e}
+ #lkwiz .wz-eula{margin:14px 0 4px;text-align:left;display:flex;flex-direction:column;gap:12px}
+ #lkwiz .wz-eula label{display:flex;gap:11px;align-items:flex-start;font-size:13px;line-height:1.5;
+   color:#c9bda0;cursor:pointer}
+ #lkwiz .wz-eula input{margin:1px 0 0;width:17px;height:17px;flex:none;accent-color:#c69a52;cursor:pointer}
+ #lkwiz .wz-fine{margin:16px 0 0;font-size:11.5px;line-height:1.55;color:#6a5f4d}
+</style></head>
+<body>
+<canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
+<div id="hud">☰ starting…</div>
+<div id="savetools" title="Back up or restore your saves and settings">
+  <button id="btn-backup" type="button">⬇ Backup</button>
+  <button id="btn-restore" type="button">⬆ Restore</button>
+  <input id="restore-file" type="file" accept=".tar" style="display:none">
+</div>
+<div id="log">booting…</div>
+<div id="loading" class="indet">
+  <div class="ld-inner">
+    <div class="ld-glyph" aria-hidden="true">
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="17"/>
+        <circle cx="24" cy="24" r="2.2" fill="currentColor" stroke="none"/>
+        <path d="M24 7 27 24 24 41 21 24Z"/>
+        <path d="M7 24 24 21 41 24 24 27Z"/>
+      </svg>
+    </div>
+    <div class="ld-title" id="ld-title">Elder Scrolls III: Morrowind</div>
+    <div class="ld-status" id="ld-status">Preparing…</div>
+    <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+    <div class="ld-detail" id="ld-detail"></div>
+    <div class="ld-credit">OpenMW-Web by <a href="https://virtastic.app" target="_blank" rel="noopener">Virtastic</a>
+      &middot; GPLv3 &middot; <a href="https://github.com/Virtastic/openmw-web" target="_blank" rel="noopener">Source</a></div>
+  </div>
+</div>
 </style>
 </head>
 <body>
 <div id="wrap"><canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas></div>
+<!-- First-visit Cloud Locker upload wizard. Shows which game files the account still needs, lets
+     the player pick their Data folder once, and checks each off after the server verifies the
+     uploaded bytes. Hidden unless the locker is empty on a ?src=cloud launch. Mirrors openmw-web. -->
+<div id="lkhelp" role="dialog" aria-modal="true" aria-labelledby="lkhelp-h">
+  <div class="lkhelp-box">
+    <button class="lkhelp-x" id="lkhelp-close" type="button" aria-label="Close">&times;</button>
+    <div class="wz-kick">Finding your files</div>
+    <h2 class="wz-h" id="lkhelp-h">Where is my Data folder?</h2>
+    <p class="wz-p">Jagged Alliance 2 keeps everything the game needs in one folder called
+       <b>Data</b>. It holds the <code>.slf</code> archives such as
+       <code>JAGGED ALLIANCE 2.SLF</code> and <code>SPEECH.SLF</code>. You are looking for that
+       folder, not the game's shortcut and not the installer.</p>
+
+    <h3 class="lkhelp-h3">GOG.com</h3>
+    <p class="wz-p">In <b>GOG Galaxy</b>, open Jagged Alliance 2, click the gear beside <b>Play</b>
+       and choose <b>Manage installation &rsaquo; Show folder</b>. Without Galaxy it is wherever the
+       offline installer put it. The usual location is:</p>
+    <ul class="lkhelp-ul">
+      <li><b>Windows</b><br><code>C:\GOG Games\Jagged Alliance 2 Gold\Data</code></li>
+      <li><b>Linux / macOS</b><br><code>~/GOG Games/Jagged Alliance 2 Gold/game/Data</code></li>
+    </ul>
+
+    <h3 class="lkhelp-h3">Steam</h3>
+    <p class="wz-p">In Steam, right-click <b>Jagged Alliance 2</b> in your Library and choose
+       <b>Manage &rsaquo; Browse local files</b>. A window opens on the game folder; <b>Data</b> is
+       inside it. The usual location is:</p>
+    <ul class="lkhelp-ul">
+      <li><b>Windows</b><br><code>C:\Program Files (x86)\Steam\steamapps\common\Jagged Alliance 2\Data</code></li>
+    </ul>
+    <p class="wz-p lkhelp-tip">Windows blocks the browser from opening folders inside
+       <code>Program Files</code>, which is where Steam installs by default. Copy the <b>Data</b>
+       folder to <b>Documents</b> or <b>Desktop</b> and pick it there. GOG installs under
+       <code>C:\GOG Games\</code> are already fine.</p>
+
+    <h3 class="lkhelp-h3">How to tell you have the right folder</h3>
+    <p class="wz-p">It contains files ending in <code>.slf</code>, and subfolders such as
+       <code>TILECACHE</code>. If you see <code>ja2.exe</code> but no <code>.slf</code> files you are
+       one level too high: open <b>Data</b> inside it. You can also just pick the game folder and we
+       find <code>Data</code> inside.</p>
+    <p class="wz-p lkhelp-tip">Nothing leaves your machine except the files listed on the previous
+       screen, and they go only to your own account's private locker.</p>
+  </div>
+</div>
+<div id="lkwiz" role="dialog" aria-modal="true" aria-labelledby="lkwiz-h">
+  <div class="wz">
+    <div class="wz-kick">Cloud Locker &middot; one-time setup</div>
+    <button class="wz-help" id="lkwiz-help" type="button"
+            aria-label="Where do I find my Data folder?">?</button>
+    <h2 class="wz-h" id="lkwiz-h">Add your Jagged Alliance 2 files</h2>
+    <p class="wz-p">Your game data lives in your account, so it follows you to any device. Choose your
+       Jagged Alliance 2 <b>Data</b> folder once and we find everything below inside it. It uploads to
+       your private locker and is verified. You only do this the first time.</p>
+    <ul class="wz-list" id="lkwiz-list"></ul>
+    <p class="wz-eula-lead">Jagged Alliance 2 is &copy; its respective rights holders. We do not
+       provide the game. You may only upload files from a copy you legally own, as a private backup
+       for your own use. Please confirm:</p>
+    <div class="wz-eula" id="lkwiz-eula">
+      <label><input type="checkbox" id="eula-own"> <span>I have purchased a copy of Jagged Alliance&nbsp;2.</span></label>
+      <label><input type="checkbox" id="eula-legal"> <span>The files I am uploading have been obtained legally and are my own.</span></label>
+      <label><input type="checkbox" id="eula-understand"> <span>I understand these are stored privately as backup copies for my own use only, that they are streamed back to no one but me, and that I will not share or redistribute them.</span></label>
+    </div>
+    <button class="wz-btn" id="lkwiz-pick" type="button" disabled>Choose your Data folder</button>
+    <p class="wz-note" id="lkwiz-note"></p>
+    <p class="wz-fine">Your browser asks you to confirm the folder. Only Jagged Alliance 2's own game
+       files are read from it. Nothing else is touched or uploaded, and what we store stays private to
+       you, used only to stream your own game back to you.</p>
+  </div>
+</div>
 <div id="status" class="indet">
   <div class="ld-inner">
     <div class="ld-glyph" aria-hidden="true">
@@ -362,6 +530,174 @@ async function mountOwnDataFolder(){
   return meta;
 }
 
+// --- Cloud Locker upload wizard (first ?src=cloud visit) ----------------------------------------
+// Ported from openmw-web: a checklist of the files the account still needs, three ownership
+// checkboxes that unlock the folder picker, then one folder pick that finds everything and uploads
+// it with live per-file status. Help sheet opens from the "?" and closes via X, backdrop or Escape.
+(function(){
+  var hb=document.getElementById('lkwiz-help'), sheet=document.getElementById('lkhelp'),
+      x=document.getElementById('lkhelp-close');
+  if (!hb || !sheet) return;
+  function open(){ sheet.classList.add('show'); if (x) x.focus(); }
+  function close(){ sheet.classList.remove('show'); hb.focus(); }
+  hb.addEventListener('click', function(e){ e.stopPropagation(); open(); });
+  if (x) x.addEventListener('click', close);
+  sheet.addEventListener('click', function(e){ if (e.target === sheet) close(); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && sheet.classList.contains('show')){ e.stopPropagation(); close(); }
+  });
+})();
+
+var wiz = (function(){
+  var el=document.getElementById('lkwiz'), list=document.getElementById('lkwiz-list'),
+      noteEl=document.getElementById('lkwiz-note'), pick=document.getElementById('lkwiz-pick');
+  var rows={};
+  return {
+    show:function(){ el.classList.add('show'); },
+    hide:function(){ el.classList.remove('show'); },
+    setPick:function(label,enabled){ pick.textContent=label; pick.disabled=!enabled; },
+    note:function(msg,cls){ noteEl.textContent=msg||''; noteEl.className='wz-note'+(cls?' '+cls:''); },
+    // needed: [{name,size,required}] - a row per top-level archive, plus one per subfolder.
+    render:function(needed){
+      list.innerHTML=''; rows={};
+      needed.forEach(function(f){
+        var key=f.name.toLowerCase();
+        var li=document.createElement('li'); li.className='wz-li'+(f.required?'':' opt');
+        li.innerHTML='<span class="ic"></span><span class="nm">'+f.name+'</span>'
+          +(f.required?'':'<span class="tag">optional</span>')
+          +'<span class="st">'+(Math.round(f.size/1048576)||1)+' MB</span>';
+        list.appendChild(li);
+        rows[key]={li:li,req:f.required,ic:li.querySelector('.ic'),st:li.querySelector('.st')};
+      });
+    },
+    set:function(name,state,text){
+      var r=rows[String(name).toLowerCase()]; if(!r) return;
+      r.li.className='wz-li'+(r.req?'':' opt')+(state?' '+state:'');
+      r.ic.textContent = state==='done'?'✓':(state==='err'?'!':'');
+      if(text!=null) r.st.textContent=text;
+    }
+  };
+})();
+
+// The checklist the wizard shows: the recognized edition's top-level archives listed individually
+// (they are the names players recognise) and each subfolder rolled into a single row, so a 178-file
+// install reads as ~25 rows rather than a wall. Grouping is display only - every file is still
+// verified and uploaded individually, and the server re-checks all of it regardless.
+function cloudNeededRows(ed){
+  var top=[], groups={};
+  Object.keys(ed.files).forEach(function(p){
+    var i=p.indexOf('/');
+    if (i<0) top.push({ name:p, size:ed.files[p], required:true });
+    else { var g=p.slice(0,i); groups[g]=(groups[g]||0)+ed.files[p]; }
+  });
+  top.sort(function(a,b){ return b.size-a.size; });
+  return top.concat(Object.keys(groups).sort().map(function(g){
+    return { name:g+'/', size:groups[g], required:true };
+  }));
+}
+
+// Runs the wizard to completion. Resolves once the manifest is committed, i.e. the locker holds a
+// verified copy; rejects nothing - failures stay on screen so the player can retry or re-pick.
+async function runCloudWizard(){
+  var manifests = (await (await fetch('data-manifests.json')).json()).editions;
+  return new Promise(function(resolve){
+    var boxes=['eula-own','eula-legal','eula-understand'].map(function(id){ return document.getElementById(id); });
+    boxes.forEach(function(b){ b.checked=false; });
+    wiz.render(cloudNeededRows(manifests[0]));          // GOG list until a folder tells us better
+    wiz.setPick('Choose your Data folder', false);
+    wiz.note('');
+    wiz.show();
+    boxes.forEach(function(b){ b.onchange=function(){
+      wiz.setPick('Choose your Data folder', boxes.every(function(x){ return x.checked; }));
+    }; });
+
+    var busy=false;
+    document.getElementById('lkwiz-pick').onclick = async function(){
+      if (busy) return;
+      var picked;
+      try { picked = await window.showDirectoryPicker({ id:'ja2', mode:'read' }); }
+      catch(e){
+        if (e && e.name==='AbortError') return;
+        if (e && (e.name==='SecurityError' || /system files|blocklist/i.test((e&&e.message)||'')))
+          return wiz.note('That folder is in a location the browser will not open (Windows blocks Program Files, including Steam’s default folder). Copy your Data folder to Documents or Desktop and pick it there.','err');
+        return wiz.note('Could not open that folder: '+(e&&e.message||e),'err');
+      }
+      busy=true; wiz.setPick('Checking…', false);
+      try {
+        // Descend into Data/ if the player picked the game folder.
+        var dir=picked;
+        for await (const ent of picked.entries())
+          if (ent[1].kind==='directory' && ent[0].toLowerCase()==='data'){ dir=ent[1]; break; }
+
+        var have={};                                     // pathLower -> {size,handle,rel}
+        await (async function walk(h, prefix){
+          for await (const ent of h.entries()){
+            var rel = prefix ? prefix+'/'+ent[0] : ent[0];
+            if (ent[1].kind==='directory') await walk(ent[1], rel);
+            else { var f=await ent[1].getFile(); have[rel.toLowerCase()]={size:f.size,handle:ent[1],rel:rel}; }
+          }
+        })(dir, '');
+
+        // Pick the edition with the MOST exact size matches (a ratio would favour a smaller edition).
+        var best=null;
+        manifests.forEach(function(ed){
+          var m=0; Object.keys(ed.files).forEach(function(p){ if (have[p] && have[p].size===ed.files[p]) m++; });
+          if (!best || m>best.matched) best={ ed:ed, matched:m, total:Object.keys(ed.files).length };
+        });
+        if (!best || best.matched/best.total < 0.85){
+          busy=false; wiz.setPick('Choose your Data folder', true);
+          return wiz.note('That does not look like a complete Jagged Alliance 2 Data folder ('
+            +(best?best.matched:0)+' of '+(best?best.total:0)+' files matched). Pick the Data folder of an unmodified install.','err');
+        }
+        wiz.render(cloudNeededRows(best.ed));
+        wiz.note(best.ed.name+' detected. Uploading…');
+
+        // Upload every present file; the row it belongs to ticks over as its files complete.
+        var rels = Object.keys(best.ed.files).filter(function(p){ return have[p]; });
+        var pend = {}; rels.forEach(function(p){ var k=rowKeyFor(p); pend[k]=(pend[k]||0)+1; });
+        var doneBytes=0, totalBytes=rels.reduce(function(n,p){ return n+have[p].size; },0);
+        for (var i=0;i<rels.length;i++){
+          var p=rels[i], k=rowKeyFor(p);
+          wiz.set(k,'busy');
+          var file=await have[p].handle.getFile();
+          var pr=await fetch('/api/data/presign',{ method:'POST', credentials:'same-origin',
+            headers:{'content-type':'application/json'}, body:JSON.stringify({ path:have[p].rel, size:file.size }) });
+          if (!pr.ok){
+            var msg=await pr.json().catch(function(){ return {}; });
+            wiz.set(k,'err','failed'); busy=false; wiz.setPick('Choose your Data folder', true);
+            return wiz.note(msg.error || 'Upload was refused. Try signing in again.','err');
+          }
+          var grant=await pr.json();
+          var put=await fetch(grant.url,{ method:'PUT', body:file, headers:grant.headers||{} });
+          if (!put.ok){
+            wiz.set(k,'err','failed'); busy=false; wiz.setPick('Choose your Data folder', true);
+            return wiz.note(have[p].rel+' failed to upload ('+put.status+').','err');
+          }
+          doneBytes+=file.size;
+          if (--pend[k] <= 0) wiz.set(k,'done','in your locker');
+          wiz.note('Uploading… '+Math.round(doneBytes/totalBytes*100)+'% ('+((doneBytes/1048576)|0)+' MB)');
+        }
+        // Commit: the server re-verifies every object before the locker counts as usable.
+        var mf=await fetch('/api/data/presign',{ method:'POST', credentials:'same-origin',
+          headers:{'content-type':'application/json'},
+          body:JSON.stringify({ manifest:{ files: rels.map(function(p){ return { path:have[p].rel, size:have[p].size }; }) } }) });
+        if (!mf.ok){
+          var e2=await mf.json().catch(function(){ return {}; });
+          busy=false; wiz.setPick('Choose your Data folder', true);
+          return wiz.note(e2.error || 'The uploaded files could not be verified.','err');
+        }
+        wiz.note('Done. Starting your game…','ok');
+        setTimeout(function(){ wiz.hide(); resolve(); }, 700);
+      } catch(err){
+        busy=false; wiz.setPick('Choose your Data folder', true);
+        wiz.note('Could not read that folder: '+(err&&err.message||err),'err');
+      }
+    };
+  });
+}
+// A file's checklist row: top-level files are their own row, anything in a subfolder rolls up.
+function rowKeyFor(p){ var i=p.indexOf('/'); return i<0 ? p : p.slice(0,i)+'/'; }
+
 // ?src=cloud: same shape as mountOwnDataFolder, but the source is the user's own JA2 data uploaded
 // to their private S3 prefix (Cloud Locker). The backend returns a manifest of {path,size} with a
 // presigned GET url per file; we stream each into the SAME MEMFS target (/owndata/data), so the
@@ -371,6 +707,14 @@ async function mountCloudData(){
   if (r.status === 401) throw new Error('Not signed in to the Cloud Locker');
   if (!r.ok) throw new Error('Cloud storage is unavailable');
   var files = (await r.json()).files || [];
+  // Empty locker on a first visit: run the one-time upload wizard, then read the manifest again.
+  // This is where the upload lives - in the game, with the account known - exactly like openmw-web.
+  if (!files.length){
+    setLoading('');
+    await runCloudWizard();
+    r = await fetch('/api/data/manifest', { credentials:'same-origin' });
+    files = r.ok ? ((await r.json()).files || []) : [];
+  }
   if (!files.length) throw new Error('No JA2 data has been uploaded to your Cloud Locker yet');
   addRunDependency('ja2-clouddata');
   try {

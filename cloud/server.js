@@ -29,7 +29,11 @@ const JWT_SECRET = env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 if (!env.JWT_SECRET) console.warn('JWT_SECRET unset - using an ephemeral key (sessions reset on restart)');
 const DEV_AUTH = env.DEV_AUTH === '1';            // enables /api/auth/dev/login for headless E2E
 const SESSION_TTL = 60 * 60 * 24 * 30;            // 30 days
-const userPrefix = (uid) => `users/${uid}/`;
+// Root prefix inside the bucket. Prod and dev MUST NOT share one: they issue sessions from different
+// JWT secrets and dev may run with DEV_AUTH, so a shared root would let a dev login read production
+// lockers. Set S3_PREFIX=dev/ (or use separate buckets) for any non-production instance.
+const ROOT_PREFIX = env.S3_PREFIX ? `${env.S3_PREFIX.replace(/^\/+|\/+$/g, '')}/` : '';
+const userPrefix = (uid) => `${ROOT_PREFIX}users/${uid}/`;
 
 // ---- Storage backend: S3 when configured, else local disk ---------------------------------------
 const USE_S3 = Boolean(env.S3_BUCKET && env.S3_ENDPOINT);
@@ -318,7 +322,7 @@ async function checkQuota(uid, incoming, replacingKey, reserve = false) {
 let totalCache = { bytes: 0, at: 0 };
 async function totalUsage() {
   if (Date.now() - totalCache.at < 30_000) return totalCache.bytes;
-  const { bytes } = await store.usage('users/');
+  const { bytes } = await store.usage(`${ROOT_PREFIX}users/`);
   totalCache = { bytes, at: Date.now() };
   return bytes;
 }
@@ -469,7 +473,7 @@ if (store.kind === 'local') {
   app.route({ method: ['GET', 'PUT', 'DELETE'], url: '/api/blob/*', handler: async (req, reply) => {
     const u = requireUser(req, reply); if (!u) return;
     const key = req.params['*'] || '';
-    const mine = `users/${u.uid}/`;
+    const mine = userPrefix(u.uid);
     if (!key.startsWith(mine)) return reply.code(403).send({ error: 'forbidden' });
     const rest = key.slice(mine.length);                                  // "data/<rel>" | "saves/<name>"
     const m = /^(data|saves)\/(.+)$/s.exec(rest);

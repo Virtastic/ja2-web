@@ -54,8 +54,12 @@ const MAX_USER_BYTES  = num('MAX_USER_BYTES', 4 * 1024 * 1024 * 1024);   // per 
 const MAX_USER_FILES  = num('MAX_USER_FILES', 4000);                     // per account
 const MAX_SAVE_BYTES  = num('MAX_SAVE_BYTES', 64 * 1024 * 1024);         // one savegame
 const MAX_TOTAL_BYTES = num('MAX_TOTAL_BYTES', 100 * 1024 * 1024 * 1024);// whole install (local mode)
-// Data files must look like game data. Blocks using the locker as a general file host.
-const DATA_EXT_OK = /\.(slf|dat|edt|lua|json|txt|ini|xml|wav|mp3|ogg|sti|pcx|tga|bmp|dds|npc|emi|dlg)$/i;
+// Data files must look like game data. Blocks using the locker as a general file host. The set is
+// DERIVED from the editions manifest below (every extension some edition actually ships) rather than
+// hand-listed: a guessed list silently rejected the 109 .jsd files in a real install's TILECACHE as
+// "bad path" while the very same files were on the known-file list. The literal is only the fallback
+// for when the manifest is missing (VERIFY_DATA off / file absent).
+let DATA_EXT_OK = /\.(slf|dat|edt|jsd|gap|bin|sti|npc|wav|lua|json|txt|ini|xml|mp3|ogg|pcx|tga|bmp|dds|emi|dlg)$/i;
 
 // ---- "Is this actually JA2 data?" ---------------------------------------------------------------
 // Two tiers, because Jagged Alliance 2 shipped in many builds while the engine's resource packs
@@ -77,6 +81,11 @@ let EDITIONS = { files: {} };
 try { EDITIONS = JSON.parse(await fs.readFile(new URL('./ja2-editions.json', import.meta.url), 'utf8')); }
 catch { console.warn('ja2-editions.json missing - game-data verification disabled'); }
 const EDITION_PATHS = Object.keys(EDITIONS.files).length;
+if (EDITION_PATHS) {                                          // keep the gate in step with the data
+  const exts = new Set();
+  for (const p of Object.keys(EDITIONS.files)) { const m = /\.([a-z0-9]+)$/.exec(p); if (m) exts.add(m[1]); }
+  if (exts.size) DATA_EXT_OK = new RegExp('\\.(' + [...exts].join('|') + ')$', 'i');
+}
 const variantsOf = (rel) => EDITIONS.files[String(rel).toLowerCase()] || [];
 // Returns how a file was accepted: 'exact' (hash matches a recorded build), 'size' (known name,
 // plausible size), or null when it is not game data we know at all. `hash` is client-supplied, so

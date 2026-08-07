@@ -133,34 +133,6 @@
    color:#c9bda0;cursor:pointer}
  #lkwiz .wz-eula input{margin:1px 0 0;width:17px;height:17px;flex:none;accent-color:#c69a52;cursor:pointer}
  #lkwiz .wz-fine{margin:16px 0 0;font-size:11.5px;line-height:1.55;color:#6a5f4d}
-</style></head>
-<body>
-<canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
-<div id="hud">☰ starting…</div>
-<div id="savetools" title="Back up or restore your saves and settings">
-  <button id="btn-backup" type="button">⬇ Backup</button>
-  <button id="btn-restore" type="button">⬆ Restore</button>
-  <input id="restore-file" type="file" accept=".tar" style="display:none">
-</div>
-<div id="log">booting…</div>
-<div id="loading" class="indet">
-  <div class="ld-inner">
-    <div class="ld-glyph" aria-hidden="true">
-      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
-        <circle cx="24" cy="24" r="17"/>
-        <circle cx="24" cy="24" r="2.2" fill="currentColor" stroke="none"/>
-        <path d="M24 7 27 24 24 41 21 24Z"/>
-        <path d="M7 24 24 21 41 24 24 27Z"/>
-      </svg>
-    </div>
-    <div class="ld-title" id="ld-title">Elder Scrolls III: Morrowind</div>
-    <div class="ld-status" id="ld-status">Preparing…</div>
-    <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
-    <div class="ld-detail" id="ld-detail"></div>
-    <div class="ld-credit">OpenMW-Web by <a href="https://virtastic.app" target="_blank" rel="noopener">Virtastic</a>
-      &middot; GPLv3 &middot; <a href="https://github.com/Virtastic/openmw-web" target="_blank" rel="noopener">Source</a></div>
-  </div>
-</div>
 </style>
 </head>
 <body>
@@ -285,6 +257,16 @@ var ldStatusEl = document.getElementById('ld-status');
 var ldFillEl = document.getElementById('ld-fill');
 // Drive the themed loading overlay from an emscripten status string such as
 // "Downloading data... (1234/56789)" - fill the progress bar and show MB.
+// Drive the overlay's bar as a real percentage. Anything that knows how many bytes it has moved
+// should call this instead of only writing a line of text - the bar otherwise keeps sweeping its
+// indeterminate animation and the player cannot tell 5% from 95%.
+function setProgress(done, total, label, detail){
+  if (!(total > 0)) return;
+  statusEl.classList.remove('indet');
+  if (ldFillEl) ldFillEl.style.width = Math.max(2, Math.min(100, (done / total) * 100)) + '%';
+  if (label && ldStatusEl) ldStatusEl.textContent = label;
+  if (detail && subEl) subEl.textContent = detail;
+}
 function setLoading(t){
   if (!t) return;
   var m = t.match(/\((\d+)\/(\d+)\)/);
@@ -861,6 +843,10 @@ async function mountCloudData(){
   try {
     try { FS.mkdirTree('/owndata/data'); } catch(e){}
     var done=0, bytes=0, slf=0, total=files.length;
+    // The manifest carries every file's size, so the bar can be a true byte percentage rather than
+    // a file count - the archives differ by two orders of magnitude, so 14/161 files is not 8%.
+    var totalBytes = files.reduce(function(n,f){ return n + (f.size || 0); }, 0);
+    setProgress(0, totalBytes || 1, 'Downloading your Cloud Locker…', '0 / ' + ((totalBytes/1048576)|0) + ' MB');
     for (var i=0;i<files.length;i++){
       var f = files[i], rel = f.path;
       var slash = rel.lastIndexOf('/');
@@ -870,7 +856,8 @@ async function mountCloudData(){
       var buf = new Uint8Array(await fr.arrayBuffer());
       FS.writeFile('/owndata/data/'+rel, buf);
       done++; bytes += buf.length; if (/\.slf$/i.test(rel)) slf++;
-      if (subEl) subEl.textContent = 'Downloading your Cloud Locker… '+done+'/'+total+' files, '+((bytes/1048576)|0)+' MB';
+      setProgress(bytes, totalBytes || bytes, 'Downloading your Cloud Locker…',
+        done+'/'+total+' files  ·  '+((bytes/1048576)|0)+' / '+((totalBytes/1048576)|0)+' MB');
     }
     if (slf===0) throw new Error('Your Cloud Locker has no .slf data archives');
     console.log('cloud-data: downloaded '+done+' files ('+((bytes/1048576)|0)+' MB, '+slf+' SLF) → /owndata/data');

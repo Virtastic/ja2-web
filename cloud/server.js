@@ -421,7 +421,7 @@ app.get('/api/auth/:provider/callback', async (req, reply) => {
     await store.putJson(`${userPrefix(uid)}user.json`,
       { uid, provider: name, name: info.name, email: info.email, updated: new Date().toISOString() });
     setSession(reply, uid, info.name || 'player');
-    return reply.redirect('/launcher.html');
+    return reply.redirect('/index.html?src=cloud');   // straight into the game - the launcher was just the door
   } catch (e) {
     app.log.error(e); return reply.code(502).send({ error: 'oauth failed' });
   }
@@ -433,7 +433,7 @@ if (DEV_AUTH) {
     const uid = uidFor('dev', String(req.query.uid || 'test'));
     await store.putJson(`${userPrefix(uid)}user.json`, { uid, provider: 'dev', name: 'Dev User' });
     setSession(reply, uid, 'Dev User');
-    return reply.redirect('/launcher.html');
+    return reply.redirect('/index.html?src=cloud');   // straight into the game - the launcher was just the door
   });
 }
 

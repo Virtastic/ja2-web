@@ -767,10 +767,11 @@ async function runCloudWizard(){
         wiz.render(cloudNeededRows(best.ed));
         wiz.note(best.ed.name+' detected. Uploading…');
 
-        // Upload one file at a time, in the SAME order the checklist is drawn, so it fills top to
-        // bottom instead of appearing to tick at random. Sequential like openmw-web: the browser
-        // would happily run these in parallel, but each file is up to 512 MB and the server bills
-        // them against one quota - one at a time keeps memory flat and failures unambiguous.
+        // Four files in flight, drawn from the checklist order so the list still fills roughly top
+        // to bottom. Fully sequential paid 2-3 round trips of dead time per file - across 161 files
+        // (most tiny) that was the bulk of the wall clock - and the network idled while a big
+        // archive hashed. A small pool overlaps hashing with uploading and hides per-file latency;
+        // 4 keeps at most ~4 files' bytes in flight so memory stays flat.
         var rels = Object.keys(best.ed.files).filter(function(p){ return have[p]; });
         var order = {}; cloudNeededRows(best.ed).forEach(function(r, i){ order[r.name.toLowerCase()] = i; });
         rels.sort(function(a, b){ return (order[rowKeyFor(a)]|0) - (order[rowKeyFor(b)]|0); });
@@ -779,13 +780,16 @@ async function runCloudWizard(){
         rels.forEach(function(p){ var k=rowKeyFor(p); total[k]=(total[k]||0)+1; done[k]=0; });
         var doneBytes=0, totalBytes=rels.reduce(function(n,p){ return n+have[p].size; },0);
         var uploaded=[], rejected=[], digests={};     // what landed, and what was refused as not-a-known-release
-        for (var i=0;i<rels.length;i++){
-          var p=rels[i], k=rowKeyFor(p), many=total[k]>1;
+        var fatal = null;                             // quota/auth/server error: stop starting new files
+
+        async function uploadOne(p){
+          var k=rowKeyFor(p), many=total[k]>1;
           var file=await have[p].handle.getFile();
           // Hash first: an exact match against a recorded build is what gets a file accepted
           // outright, rather than on the size-tolerance path.
           wiz.set(k,'busy', many ? (done[k]+'/'+total[k]) : 'checking…');
           var digest = await md5File(file);
+          if (fatal) return;
           wiz.set(k,'busy', many ? (done[k]+'/'+total[k]) : 'uploading…');
           var pr=await fetch('/api/data/presign',{ method:'POST', credentials:'same-origin',
             headers:{'content-type':'application/json'},
@@ -795,9 +799,8 @@ async function runCloudWizard(){
             // 422 = this file is not recognised game data. That is a fact about ONE file, so skip it
             // and keep going; a single odd file in an otherwise genuine install must not throw away
             // a gigabyte of good upload. Anything else (quota, auth, server) really is fatal.
-            if (pr.status === 422){ rejected.push(have[p].rel); wiz.set(k,'err','not a known release'); continue; }
-            wiz.set(k,'err','failed'); busy=false; wiz.setPick('Choose your Data folder', true);
-            return wiz.note(msg.error || 'Upload was refused. Try signing in again.','err');
+            if (pr.status === 422){ rejected.push(have[p].rel); wiz.set(k,'err','not a known release'); return; }
+            wiz.set(k,'err','failed'); fatal = msg.error || 'Upload was refused. Try signing in again.'; return;
           }
           var grant=await pr.json();
           var put=await fetch(grant.url,{ method:'PUT', body:file, headers:grant.headers||{} });
@@ -806,10 +809,9 @@ async function runCloudWizard(){
             // release, its checksum. Storage answers 400 when the bytes don't match that - i.e. the
             // file is the right name and length but not the release we know. Skip it like a 422.
             if (put.status === 400 && grant.headers && grant.headers['Content-MD5']){
-              rejected.push(have[p].rel); wiz.set(k,'err','not a known release'); continue;
+              rejected.push(have[p].rel); wiz.set(k,'err','not a known release'); return;
             }
-            wiz.set(k,'err','failed'); busy=false; wiz.setPick('Choose your Data folder', true);
-            return wiz.note(have[p].rel+' failed to upload ('+put.status+').', 'err');
+            wiz.set(k,'err','failed'); fatal = have[p].rel+' failed to upload ('+put.status+').'; return;
           }
           uploaded.push(p); digests[p] = digest;
           // Same key derivation as the download side (md5 first, path+size fallback), so the next
@@ -819,6 +821,14 @@ async function runCloudWizard(){
           if (done[k] >= total[k]) wiz.set(k,'done', many ? 'added' : 'uploaded');
           else wiz.set(k,'busy', done[k]+'/'+total[k]);
           wiz.note('Uploading… '+Math.round(doneBytes/totalBytes*100)+'% ('+((doneBytes/1048576)|0)+' MB)');
+        }
+
+        var cursor = 0;
+        async function worker(){ while (cursor < rels.length && !fatal) await uploadOne(rels[cursor++]); }
+        await Promise.all([worker(), worker(), worker(), worker()]);
+        if (fatal){
+          busy=false; wiz.setPick('Choose your Data folder', true);
+          return wiz.note(fatal,'err');
         }
         if (!uploaded.length){
           busy=false; wiz.setPick('Choose your Data folder', true);

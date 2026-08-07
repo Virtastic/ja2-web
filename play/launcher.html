@@ -589,10 +589,31 @@
    renderCloudProviders();
  }
  (async function(){
-   try { const r = await fetch('/api/health', { credentials:'same-origin' }); if (!r.ok) return;
-     const h = await r.json(); if (!h.ok) return; cloudProviders = h.providers || {}; } catch(e){ return; }
-   await cloudFetchMe(); cloudUpdateTile();
-   const card = $('card-cloud'); card.hidden = false;
+   const card = $('card-cloud');
+   // The tile is hidden until we know a Cloud backend is actually there - but waiting a round trip
+   // to find that out makes it pop in late and reflow the card grid. A browser that has seen the
+   // backend before shows it immediately and only takes it away if the probe now says otherwise, so
+   // the delay is paid once rather than on every visit.
+   const SEEN = 'ja2-cloud-available';
+   let optimistic = false;
+   try { if (localStorage.getItem(SEEN) === '1'){ card.hidden = false; optimistic = true; } } catch(e){}
+
+   // Both probes start together: /api/me is only needed once the tile is clicked, so the reveal must
+   // not queue behind it (that was two sequential round trips for a tile whose text is static).
+   const mePromise = cloudFetchMe().catch(() => null);
+   try {
+     const r = await fetch('/api/health', { credentials:'same-origin' });
+     const h = r.ok ? await r.json() : null;
+     if (!h || !h.ok) throw new Error('no cloud backend');
+     cloudProviders = h.providers || {};
+     try { localStorage.setItem(SEEN, '1'); } catch(e){}
+   } catch(e){
+     try { localStorage.removeItem(SEEN); } catch(e2){}
+     if (optimistic) card.hidden = true;                 // it was there last time; it isn't now
+     return;
+   }
+   card.hidden = false;
+   mePromise.then(cloudUpdateTile);
    card.addEventListener('click', cloudOpenModal);
    card.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); cloudOpenModal(); } });
    const hc = $('help-cloud');

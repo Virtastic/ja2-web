@@ -251,6 +251,9 @@ function jwtVerify(token) {
   if (sig.length !== expect.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
   const body = JSON.parse(Buffer.from(p, 'base64url').toString());
   if (body.exp && body.exp < Math.floor(Date.now() / 1000)) return null;
+  // Reject tokens minted under an older, longer TTL (the 30-day cookies): their lifespan gives
+  // them away, so nobody has to clear cookies by hand when the policy tightens.
+  if (body.exp - body.iat > SESSION_TTL) return null;
   return body;
 }
 

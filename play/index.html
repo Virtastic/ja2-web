@@ -617,6 +617,27 @@ async function md5File(file, onProgress){
   return md5Hex(c);
 }
 
+// --- Local copy of the locker ---------------------------------------------------------------------
+// The bytes we just uploaded are already on this machine, and until now they were thrown away the
+// moment the PUT succeeded - so the very next session downloaded the whole library back out of
+// storage. Keep them in the Cache API, addressed BY CONTENT (md5), which is what the download path
+// looks them up by. Content addressing means a file shared between two accounts is stored once and
+// a changed file can never be served from a stale entry.
+// Best effort throughout: a library larger than the browser's quota simply keeps what fits, and a
+// miss only costs a download.
+var LOCKER_CACHE = 'ja2-locker-v1';
+var cacheKey = function(md5){ return '/__ja2-locker/' + md5; };
+async function lockerCacheGet(md5){
+  if (!md5 || !self.caches) return null;
+  try { var c = await caches.open(LOCKER_CACHE); var r = await c.match(cacheKey(md5)); return r || null; }
+  catch(e){ return null; }
+}
+async function lockerCachePut(md5, blob){
+  if (!md5 || !self.caches) return;
+  try { var c = await caches.open(LOCKER_CACHE); await c.put(cacheKey(md5), new Response(blob)); }
+  catch(e){ /* QuotaExceeded and friends: a cache miss only costs a download */ }
+}
+
 // --- Cloud Locker upload wizard (first ?src=cloud visit) ----------------------------------------
 // Ported from openmw-web: a checklist of the files the account still needs, three ownership
 // checkboxes that unlock the folder picker, then one folder pick that finds everything and uploads
@@ -788,6 +809,7 @@ async function runCloudWizard(){
             return wiz.note(have[p].rel+' failed to upload ('+put.status+').', 'err');
           }
           uploaded.push(p); digests[p] = digest;
+          await lockerCachePut(digest, file);        // next session reads this instead of downloading
           doneBytes+=file.size; done[k]++;
           if (done[k] >= total[k]) wiz.set(k,'done', many ? 'added' : 'uploaded');
           else wiz.set(k,'busy', done[k]+'/'+total[k]);
@@ -842,7 +864,7 @@ async function mountCloudData(){
   addRunDependency('ja2-clouddata');
   try {
     try { FS.mkdirTree('/owndata/data'); } catch(e){}
-    var done=0, bytes=0, slf=0, total=files.length;
+    var done=0, bytes=0, slf=0, cached=0, total=files.length;
     // The manifest carries every file's size, so the bar can be a true byte percentage rather than
     // a file count - the archives differ by two orders of magnitude, so 14/161 files is not 8%.
     var totalBytes = files.reduce(function(n,f){ return n + (f.size || 0); }, 0);
@@ -851,16 +873,27 @@ async function mountCloudData(){
       var f = files[i], rel = f.path;
       var slash = rel.lastIndexOf('/');
       if (slash > 0){ try { FS.mkdirTree('/owndata/data/'+rel.slice(0,slash)); } catch(e){} }
-      var fr = await fetch(f.url, { mode:'cors' });
-      if (!fr.ok) throw new Error('Download failed for '+rel+' ('+fr.status+')');
-      var buf = new Uint8Array(await fr.arrayBuffer());
+      var hit = await lockerCacheGet(f.md5);        // already on this machine from a previous session?
+      var buf;
+      if (hit){
+        buf = new Uint8Array(await hit.arrayBuffer());
+        cached++;
+      } else {
+        var fr = await fetch(f.url, { mode:'cors' });
+        if (!fr.ok) throw new Error('Download failed for '+rel+' ('+fr.status+')');
+        buf = new Uint8Array(await fr.arrayBuffer());
+        await lockerCachePut(f.md5, new Blob([buf]));
+      }
       FS.writeFile('/owndata/data/'+rel, buf);
       done++; bytes += buf.length; if (/\.slf$/i.test(rel)) slf++;
-      setProgress(bytes, totalBytes || bytes, 'Downloading your Cloud Locker…',
-        done+'/'+total+' files  ·  '+((bytes/1048576)|0)+' / '+((totalBytes/1048576)|0)+' MB');
+      setProgress(bytes, totalBytes || bytes,
+        cached === done ? 'Loading your Cloud Locker…' : 'Downloading your Cloud Locker…',
+        done+'/'+total+' files  ·  '+((bytes/1048576)|0)+' / '+((totalBytes/1048576)|0)+' MB'
+          + (cached ? '  ·  '+cached+' from this machine' : ''));
     }
     if (slf===0) throw new Error('Your Cloud Locker has no .slf data archives');
-    console.log('cloud-data: downloaded '+done+' files ('+((bytes/1048576)|0)+' MB, '+slf+' SLF) → /owndata/data');
+    console.log('cloud-data: '+done+' files ('+((bytes/1048576)|0)+' MB, '+slf+' SLF) → /owndata/data'
+      + (cached ? ' - '+cached+' served from this machine, '+(done-cached)+' downloaded' : ''));
   } finally {
     removeRunDependency('ja2-clouddata');
   }

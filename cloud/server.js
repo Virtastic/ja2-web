@@ -477,7 +477,10 @@ app.post('/api/data/presign', async (req, reply) => {
         how = classify(p, sz, f?.md5);
         if (!how) return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${p}`, notGameData: true });
       }
-      total += sz; files.push({ path: p, size: sz, verified: how === 'exact' });
+      // Keep the hash: the client caches uploaded bytes by content, so this is what lets a later
+      // session recognise a file it already has instead of pulling it back out of storage.
+      const hex = /^[a-f0-9]{32}$/i.test(String(f?.md5 || '')) ? String(f.md5).toLowerCase() : undefined;
+      total += sz; files.push({ path: p, size: sz, verified: how === 'exact', ...(hex ? { md5: hex } : {}) });
     }
     if (total > MAX_USER_BYTES) return reply.code(413).send({ error: `over quota (max ${MAX_USER_BYTES} bytes)`, maxBytes: MAX_USER_BYTES });
 

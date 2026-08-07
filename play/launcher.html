@@ -66,11 +66,13 @@
  .wrap{width:100%; max-width:960px; text-align:center}
 
  /* --- Masthead --- */
- .eyebrow{font-size:11.5px; letter-spacing:.28em; text-transform:uppercase; font-weight:700;
-   color:var(--khaki-hi); margin:0 0 16px}
- h1{margin:0; font-family:"Hoefler Text","Copperplate","Baskerville",Georgia,serif;
-   font-weight:700; font-size:clamp(38px,6.4vw,64px); line-height:1.02; letter-spacing:.01em;
-   color:var(--ink); text-shadow:0 1px 0 rgba(0,0,0,.6), 0 0 34px rgba(201,165,74,.12)}
+ /* The project name above the title, same treatment as openmw-web's brand line. */
+ .eyebrow{font:600 17px/1 "Optima","Gill Sans",-apple-system,"Segoe UI",sans-serif;
+   letter-spacing:.28em; text-transform:uppercase; padding-left:.28em;
+   color:var(--gold); margin:0 0 26px}
+ h1{margin:0; font-family:"Hoefler Text","Baskerville","Palatino Linotype",Palatino,Georgia,serif;
+   font-weight:600; font-size:clamp(40px,6.6vw,66px); line-height:1.02; letter-spacing:.005em;
+   color:var(--ink); text-shadow:0 1px 0 rgba(0,0,0,.5), 0 0 34px rgba(201,165,74,.10)}
  h1 .two{color:var(--blood-hi); text-shadow:0 0 22px rgba(192,57,43,.4)}
  .deck{margin:18px auto 0; max-width:58ch; color:var(--muted); font-size:16px}
 
@@ -251,7 +253,7 @@
   </nav>
 </header>
 <div class="wrap">
-  <p class="eyebrow reveal d1">Jagged Alliance 2 · in your browser</p>
+  <p class="eyebrow reveal d1">JA2-Web</p>
   <h1 class="reveal d1">Jagged Alliance <span class="two">2</span></h1>
   <p class="deck reveal d2" id="deck">Assemble your squad and liberate Arulco, running entirely on your
     machine, nothing uploaded. Point the engine at your own copy of the game to play.</p>

@@ -694,12 +694,18 @@ var wiz = (function(){
 // (they are the names players recognise) and each subfolder rolled into a single row, so a 178-file
 // install reads as ~25 rows rather than a wall. Grouping is display only - every file is still
 // verified and uploaded individually, and the server re-checks all of it regardless.
-function cloudNeededRows(ed){
+// `have` (once a folder is picked) limits the checklist to files THIS copy actually has, and sizes
+// them from the real files. Without it the list is drawn from the edition's full manifest, which
+// includes loose files many installs keep inside their .slf archives instead - those rows could
+// never tick, so a finished upload still looked unfinished.
+function cloudNeededRows(ed, have){
   var top=[], groups={};
   Object.keys(ed.files).forEach(function(p){
+    if (have && !have[p]) return;                        // not in this copy: do not draw a row for it
+    var size = have ? have[p].size : ed.files[p];
     var i=p.indexOf('/');
-    if (i<0) top.push({ name:p, size:ed.files[p], required:true });
-    else { var g=p.slice(0,i); groups[g]=(groups[g]||0)+ed.files[p]; }
+    if (i<0) top.push({ name:p, size:size, required:true });
+    else { var g=p.slice(0,i); groups[g]=(groups[g]||0)+size; }
   });
   top.sort(function(a,b){ return b.size-a.size; });
   return top.concat(Object.keys(groups).sort().map(function(g){
@@ -764,7 +770,7 @@ async function runCloudWizard(){
           return wiz.note('That does not look like a complete Jagged Alliance 2 Data folder ('
             +(best?best.matched:0)+' of '+(best?best.total:0)+' expected files found). Pick the Data folder of a full install.','err');
         }
-        wiz.render(cloudNeededRows(best.ed));
+        wiz.render(cloudNeededRows(best.ed, have));   // only what this copy actually has
         wiz.note(best.ed.name+' detected. Uploading…');
 
         // Four files in flight, drawn from the checklist order so the list still fills roughly top
@@ -773,7 +779,7 @@ async function runCloudWizard(){
         // archive hashed. A small pool overlaps hashing with uploading and hides per-file latency;
         // 4 keeps at most ~4 files' bytes in flight so memory stays flat.
         var rels = Object.keys(best.ed.files).filter(function(p){ return have[p]; });
-        var order = {}; cloudNeededRows(best.ed).forEach(function(r, i){ order[r.name.toLowerCase()] = i; });
+        var order = {}; cloudNeededRows(best.ed, have).forEach(function(r, i){ order[r.name.toLowerCase()] = i; });
         rels.sort(function(a, b){ return (order[rowKeyFor(a)]|0) - (order[rowKeyFor(b)]|0); });
         // A folder row stands for many files, so it reports "3/18" until its last one lands.
         var total = {}, done = {};

@@ -28,7 +28,11 @@ const COOKIE_SECURE = env.COOKIE_SECURE !== '0' && BASE_URL.startsWith('https');
 const JWT_SECRET = env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 if (!env.JWT_SECRET) console.warn('JWT_SECRET unset - using an ephemeral key (sessions reset on restart)');
 const DEV_AUTH = env.DEV_AUTH === '1';            // enables /api/auth/dev/login for headless E2E
-const SESSION_TTL = 60 * 60 * 24 * 30;            // 30 days
+// Sessions last one BROWSER session, like openmw-web: the cookie carries no Max-Age so it dies when
+// the browser closes, and the JWT expires after a day as the backstop for browsers that restore
+// session cookies (Chrome's "continue where you left off"). Sign-in is one Google click, so the
+// cost of asking again is low and a stolen cookie ages out fast.
+const SESSION_TTL = 60 * 60 * 24;                 // 1 day (JWT backstop; cookie is session-scoped)
 // Root prefix inside the bucket. Prod and dev MUST NOT share one: they issue sessions from different
 // JWT secrets and dev may run with DEV_AUTH, so a shared root would let a dev login read production
 // lockers. Set S3_PREFIX=dev/ (or use separate buckets) for any non-production instance.
@@ -284,7 +288,7 @@ app.addContentTypeParser('*', (req, payload, done) => done(null, payload));
 await app.register(cookie);
 
 const setSession = (reply, uid, name) => reply.setCookie('ja2_session', jwtSign({ uid, name }), {
-  httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', path: '/', maxAge: SESSION_TTL });
+  httpOnly: true, secure: COOKIE_SECURE, sameSite: 'lax', path: '/' });   // no maxAge: session cookie
 const currentUser = (req) => jwtVerify(req.cookies?.ja2_session);
 function requireUser(req, reply) {
   const u = currentUser(req);

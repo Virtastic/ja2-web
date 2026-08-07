@@ -589,16 +589,15 @@
  // Everything it needs is fetched HERE, on click, rather than on every page load: the launcher does
  // not need to know your session or which providers are configured until you actually open this.
  async function cloudOpenModal(){
+   // ALWAYS ask which provider, exactly like openmw-web: the tile is a sign-in door, not a resume
+   // button. An existing session is not a reason to skip the question - if it is still valid the
+   // provider waves you straight through, so the cost is a redirect, and you always get to pick
+   // (or switch) accounts rather than being silently dropped into whichever one you used last.
    window.__modalOpen(cloudModalHtml(), 'mp-modal');       // open first, fill in as answers arrive
-   const [me] = await Promise.all([
-     cloudFetchMe().catch(() => null),
-     (async () => {
-       try { const r = await fetch('/api/health', { credentials:'same-origin' });
-             const h = r.ok ? await r.json() : null; cloudProviders = (h && h.providers) || {}; }
-       catch(e){ cloudProviders = {}; }
-     })(),
-   ]);
-   if (me){ window.__modalClose(); location.href = 'index.html?src=cloud'; return; }
+   try {
+     const r = await fetch('/api/health', { credentials:'same-origin' });
+     const h = r.ok ? await r.json() : null; cloudProviders = (h && h.providers) || {};
+   } catch(e){ cloudProviders = {}; }
    renderCloudProviders();
  }
  (function(){

@@ -887,7 +887,6 @@ async function mountCloudData(){
       setProgress(seen, totalBytes || seen || 1,
         cached && cached === done ? 'Loading your Cloud Locker…' : 'Downloading your Cloud Locker…',
         done+'/'+total+' files  ·  '+((seen/1048576)|0)+' / '+((totalBytes/1048576)|0)+' MB'
-          + (cached ? '  ·  '+cached+' from this machine' : '')
           + (current ? '  ·  '+current : ''));
     }
     showProgress(0, '');
@@ -933,7 +932,7 @@ async function mountCloudData(){
     }
     if (slf===0) throw new Error('Your Cloud Locker has no .slf data archives');
     console.log('cloud-data: '+done+' files ('+((bytes/1048576)|0)+' MB, '+slf+' SLF) → /owndata/data'
-      + (cached ? ' - '+cached+' served from this machine, '+(done-cached)+' downloaded' : ''));
+      + (cached ? ' - '+cached+' cached, '+(done-cached)+' downloaded' : ''));
   } finally {
     removeRunDependency('ja2-clouddata');
   }

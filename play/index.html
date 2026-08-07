@@ -626,7 +626,10 @@ async function md5File(file, onProgress){
 // Best effort throughout: a library larger than the browser's quota simply keeps what fits, and a
 // miss only costs a download.
 var LOCKER_CACHE = 'ja2-locker-v1';
-var cacheKey = function(md5){ return '/__ja2-locker/' + md5; };
+// Content hash when we have it. Manifests written before the hash was stored fall back to
+// path+size, which is stable for a given locker - otherwise those uploads could never be cached.
+var cacheKey = function(id){ return '/__ja2-locker/' + id; };
+var fileCacheId = function(f){ return f.md5 || ('p:' + f.path + ':' + f.size); };
 async function lockerCacheGet(md5){
   if (!md5 || !self.caches) return null;
   try { var c = await caches.open(LOCKER_CACHE); var r = await c.match(cacheKey(md5)); return r || null; }
@@ -809,7 +812,9 @@ async function runCloudWizard(){
             return wiz.note(have[p].rel+' failed to upload ('+put.status+').', 'err');
           }
           uploaded.push(p); digests[p] = digest;
-          await lockerCachePut(digest, file);        // next session reads this instead of downloading
+          // Same key derivation as the download side (md5 first, path+size fallback), so the next
+          // ?src=cloud boot on THIS machine reads these bytes instead of downloading them.
+          await lockerCachePut(fileCacheId({ path: have[p].rel, size: file.size, md5: digest }), file);
           doneBytes+=file.size; done[k]++;
           if (done[k] >= total[k]) wiz.set(k,'done', many ? 'added' : 'uploaded');
           else wiz.set(k,'busy', done[k]+'/'+total[k]);
@@ -868,28 +873,53 @@ async function mountCloudData(){
     // The manifest carries every file's size, so the bar can be a true byte percentage rather than
     // a file count - the archives differ by two orders of magnitude, so 14/161 files is not 8%.
     var totalBytes = files.reduce(function(n,f){ return n + (f.size || 0); }, 0);
-    setProgress(0, totalBytes || 1, 'Downloading your Cloud Locker…', '0 / ' + ((totalBytes/1048576)|0) + ' MB');
+    function showProgress(seen, current){
+      setProgress(seen, totalBytes || seen || 1,
+        cached && cached === done ? 'Loading your Cloud Locker…' : 'Downloading your Cloud Locker…',
+        done+'/'+total+' files  ·  '+((seen/1048576)|0)+' / '+((totalBytes/1048576)|0)+' MB'
+          + (cached ? '  ·  '+cached+' from this machine' : '')
+          + (current ? '  ·  '+current : ''));
+    }
+    showProgress(0, '');
     for (var i=0;i<files.length;i++){
       var f = files[i], rel = f.path;
       var slash = rel.lastIndexOf('/');
       if (slash > 0){ try { FS.mkdirTree('/owndata/data/'+rel.slice(0,slash)); } catch(e){} }
-      var hit = await lockerCacheGet(f.md5);        // already on this machine from a previous session?
+      var id = fileCacheId(f);
+      var hit = await lockerCacheGet(id);          // already on this machine from a previous session?
       var buf;
       if (hit){
         buf = new Uint8Array(await hit.arrayBuffer());
         cached++;
+        bytes += buf.length;
       } else {
         var fr = await fetch(f.url, { mode:'cors' });
         if (!fr.ok) throw new Error('Download failed for '+rel+' ('+fr.status+')');
-        buf = new Uint8Array(await fr.arrayBuffer());
-        await lockerCachePut(f.md5, new Blob([buf]));
+        // Read the body in chunks and report as they arrive. Waiting for the whole file made the bar
+        // sit still for minutes on the big archives (speech.slf alone is 221 MB), which reads as a hang.
+        var reader = fr.body && fr.body.getReader && f.size ? fr.body.getReader() : null;
+        if (reader){
+          // The manifest's size is server-verified at commit, so stream straight into a pre-sized
+          // buffer (no chunk list + join = half the peak memory on a 221 MB archive).
+          buf = new Uint8Array(f.size);
+          var got = 0, lastPaint = 0;
+          for(;;){
+            var step = await reader.read();
+            if (step.done) break;
+            if (got + step.value.length > buf.length) throw new Error(rel+' is larger than the manifest says');
+            buf.set(step.value, got); got += step.value.length;
+            if (got - lastPaint > 2097152){ lastPaint = got; showProgress(bytes + got, rel); }  // paint every 2 MB
+          }
+          if (got !== buf.length) throw new Error(rel+' download was cut short');
+        } else {
+          buf = new Uint8Array(await fr.arrayBuffer());
+        }
+        bytes += buf.length;
+        await lockerCachePut(id, new Blob([buf]));
       }
       FS.writeFile('/owndata/data/'+rel, buf);
-      done++; bytes += buf.length; if (/\.slf$/i.test(rel)) slf++;
-      setProgress(bytes, totalBytes || bytes,
-        cached === done ? 'Loading your Cloud Locker…' : 'Downloading your Cloud Locker…',
-        done+'/'+total+' files  ·  '+((bytes/1048576)|0)+' / '+((totalBytes/1048576)|0)+' MB'
-          + (cached ? '  ·  '+cached+' from this machine' : ''));
+      done++; if (/\.slf$/i.test(rel)) slf++;
+      showProgress(bytes, rel);
     }
     if (slf===0) throw new Error('Your Cloud Locker has no .slf data archives');
     console.log('cloud-data: '+done+' files ('+((bytes/1048576)|0)+' MB, '+slf+' SLF) → /owndata/data'

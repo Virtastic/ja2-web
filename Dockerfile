@@ -51,6 +51,16 @@ FROM nginx:1.27-alpine AS runtime
 COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
 # Static web files straight from the build context (editing them = a fast runtime-only rebuild).
 COPY play/index.html play/launcher.html play/settings.html /usr/share/nginx/html/
+
+# Cloud Locker on/off for this deployment. It is a deployment fact, not something the page should
+# discover at runtime, so the tile is simply removed when the feature is off. Build with
+# --build-arg CLOUD_LOCKER=0 for a static-only site (no /api backend, no sign-in tile).
+ARG CLOUD_LOCKER=1
+RUN if [ "$CLOUD_LOCKER" != "1" ]; then \
+      sed -i 's|<div class="card actionable reveal d3" id="card-cloud" role="button" tabindex="0">|<div class="card actionable reveal d3" id="card-cloud" role="button" tabindex="0" hidden>|' \
+        /usr/share/nginx/html/launcher.html; \
+      echo "Cloud Locker tile disabled (CLOUD_LOCKER=$CLOUD_LOCKER)"; \
+    fi
 # Gameplay trailer (web-optimized 1080p H.264, faststart; converted from ja2-mov.mov).
 COPY play/ja2-mov.mp4 /usr/share/nginx/html/
 # Social/OG preview image referenced by the pages' og:image / twitter:image meta.

@@ -266,7 +266,8 @@
   <div class="cards">
     <!-- CLOUD - revealed by JS only when the cloud backend (/api) is reachable. Click opens the
          login/actions modal (filled from /api/me). Same card + modal styling as the other tiles. -->
-    <div class="card actionable reveal d3" id="card-cloud" role="button" tabindex="0" hidden>
+    <!-- Present unless the image was built with CLOUD_LOCKER=0, which adds `hidden` here. -->
+    <div class="card actionable reveal d3" id="card-cloud" role="button" tabindex="0">
       <button class="help-btn" id="help-cloud" type="button" aria-label="About the Cloud Locker">?</button>
       <div class="glyph" aria-hidden="true">
         <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -583,37 +584,27 @@
  }
  // One job, like openmw-web: sign in, then go to the game. Already signed in? Straight in - the
  // game shows the one-time upload wizard itself when the locker is empty.
- function cloudOpenModal(){
-   if (cloudMe){ location.href = 'index.html?src=cloud'; return; }
-   window.__modalOpen(cloudModalHtml(), 'mp-modal');
+ // Everything it needs is fetched HERE, on click, rather than on every page load: the launcher does
+ // not need to know your session or which providers are configured until you actually open this.
+ async function cloudOpenModal(){
+   window.__modalOpen(cloudModalHtml(), 'mp-modal');       // open first, fill in as answers arrive
+   const [me] = await Promise.all([
+     cloudFetchMe().catch(() => null),
+     (async () => {
+       try { const r = await fetch('/api/health', { credentials:'same-origin' });
+             const h = r.ok ? await r.json() : null; cloudProviders = (h && h.providers) || {}; }
+       catch(e){ cloudProviders = {}; }
+     })(),
+   ]);
+   if (me){ window.__modalClose(); location.href = 'index.html?src=cloud'; return; }
    renderCloudProviders();
  }
- (async function(){
+ (function(){
+   // The tile is part of the page, not something discovered at runtime: whether this deployment has
+   // a Cloud Locker is a deployment fact, set by CLOUD_LOCKER when the image is built. Probing for it
+   // on every load only bought a late-appearing tile and a reflow.
    const card = $('card-cloud');
-   // The tile is hidden until we know a Cloud backend is actually there - but waiting a round trip
-   // to find that out makes it pop in late and reflow the card grid. A browser that has seen the
-   // backend before shows it immediately and only takes it away if the probe now says otherwise, so
-   // the delay is paid once rather than on every visit.
-   const SEEN = 'ja2-cloud-available';
-   let optimistic = false;
-   try { if (localStorage.getItem(SEEN) === '1'){ card.hidden = false; optimistic = true; } } catch(e){}
-
-   // Both probes start together: /api/me is only needed once the tile is clicked, so the reveal must
-   // not queue behind it (that was two sequential round trips for a tile whose text is static).
-   const mePromise = cloudFetchMe().catch(() => null);
-   try {
-     const r = await fetch('/api/health', { credentials:'same-origin' });
-     const h = r.ok ? await r.json() : null;
-     if (!h || !h.ok) throw new Error('no cloud backend');
-     cloudProviders = h.providers || {};
-     try { localStorage.setItem(SEEN, '1'); } catch(e){}
-   } catch(e){
-     try { localStorage.removeItem(SEEN); } catch(e2){}
-     if (optimistic) card.hidden = true;                 // it was there last time; it isn't now
-     return;
-   }
-   card.hidden = false;
-   mePromise.then(cloudUpdateTile);
+   if (!card || card.hidden) return;                     // built with CLOUD_LOCKER=0
    card.addEventListener('click', cloudOpenModal);
    card.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); cloudOpenModal(); } });
    const hc = $('help-cloud');

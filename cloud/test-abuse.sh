@@ -124,6 +124,23 @@ c=$(v2 '{"manifest":{"files":[{"path":"pirate-movie.slf","size":1678333}]}}' | g
 r=$(v2 '{"path":"NPC_SPEECH.SLF","size":182015718,"md5":"420647ea51e219a6a734bad331e44774"}')
 echo "$r" | grep -q '"verified":true' && pass "an observed variant from a real install verifies exactly" || fail "observed variant" "$r"
 
+# --- sliding session renewal --------------------------------------------------------------------
+# A token in the back half of its life must be reissued on any authenticated call, so an active
+# player never expires mid-game. Craft one 20h old (TTL 24h) with the test secret and look for the
+# fresh Set-Cookie.
+OLDTOK=$("$NODE" -e '
+const c=require("node:crypto"); const now=Math.floor(Date.now()/1000);
+const b64=(o)=>Buffer.from(JSON.stringify(o)).toString("base64url");
+const d=b64({alg:"HS256",typ:"JWT"})+"."+b64({uid:"slideuser",name:"S",iat:now-72000,exp:now+14400});
+console.log(d+"."+c.createHmac("sha256","test").update(d).digest("base64url"));')
+h=$(curl -s -D - -o /dev/null -H "cookie: ja2_session=$OLDTOK" "$B/api/me")
+echo "$h" | grep -qi '^set-cookie: ja2_session=' && pass "old-but-valid session is renewed (fresh cookie)" \
+  || fail "sliding renewal" "no Set-Cookie on an aging token"
+FRESH=$(curl -s -c - -o /dev/null "$B/api/auth/dev/login?uid=fresh2" | grep ja2_session | awk "{print \$NF}")
+h2=$(curl -s -D - -o /dev/null -H "cookie: ja2_session=$FRESH" "$B/api/me")
+echo "$h2" | grep -qi '^set-cookie: ja2_session=' && fail "renewal churn" "fresh token was reissued anyway" \
+  || pass "fresh session is not needlessly reissued"
+
 # --- saves are capped too -----------------------------------------------------------------------
 c=$(jsonp /api/saves/presign '{"name":"big.sav","op":"put","size":99999999}' | grep -c 'too large'); [ "$c" = 1 ] \
   && pass "oversized save rejected" || fail "save cap" "not enforced"

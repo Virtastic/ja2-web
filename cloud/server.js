@@ -365,10 +365,16 @@ app.get('/api/health', async () => ({ ok: true, storage: store.kind,
 app.get('/api/me', async (req, reply) => {
   const u = currentUser(req);
   if (!u) return reply.code(401).send({ error: 'not signed in' });
+  // Deliberately does NOT compute usage: that is a full bucket listing per call (~1.2s against S3),
+  // and this endpoint is on the launcher's first paint. Ask for it explicitly with ?usage=1.
   const m = await store.getJson(`${userPrefix(u.uid)}data/manifest.json`);
-  const use = await usageFor(u.uid).catch(() => ({ bytes: 0, files: 0 }));
-  return { uid: u.uid, name: u.name, hasData: Boolean(m?.files?.length),
-    usedBytes: use.bytes, usedFiles: use.files, maxBytes: MAX_USER_BYTES, maxFiles: MAX_USER_FILES };
+  const out = { uid: u.uid, name: u.name, hasData: Boolean(m?.files?.length),
+    maxBytes: MAX_USER_BYTES, maxFiles: MAX_USER_FILES };
+  if (req.query?.usage === '1') {
+    const use = await usageFor(u.uid).catch(() => ({ bytes: 0, files: 0 }));
+    out.usedBytes = use.bytes; out.usedFiles = use.files;
+  }
+  return out;
 });
 
 // --- OAuth login: redirect to the provider with a signed state cookie (CSRF) ---

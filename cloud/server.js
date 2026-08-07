@@ -293,6 +293,10 @@ const currentUser = (req) => jwtVerify(req.cookies?.ja2_session);
 function requireUser(req, reply) {
   const u = currentUser(req);
   if (!u) { reply.code(401).send({ error: 'not signed in' }); return null; }
+  // Sliding renewal: any request in the back half of the token's life gets a fresh cookie, so an
+  // ACTIVE player never expires mid-game (save sync fires every few minutes) - only a browser left
+  // idle for the full TTL does. Renewal is capped by the session cookie itself dying on close.
+  if (u.exp - Math.floor(Date.now() / 1000) < SESSION_TTL / 2) setSession(reply, u.uid, u.name);
   return u;
 }
 
@@ -367,8 +371,7 @@ app.get('/api/health', async () => ({ ok: true, storage: store.kind,
   providers: Object.fromEntries(Object.entries(PROVIDERS).map(([k, v]) => [k, Boolean(v.id && v.secret)])) }));
 
 app.get('/api/me', async (req, reply) => {
-  const u = currentUser(req);
-  if (!u) return reply.code(401).send({ error: 'not signed in' });
+  const u = requireUser(req, reply); if (!u) return;   // same 401 + the sliding renewal
   // Deliberately does NOT compute usage: that is a full bucket listing per call (~1.2s against S3),
   // and this endpoint is on the launcher's first paint. Ask for it explicitly with ?usage=1.
   const m = await store.getJson(`${userPrefix(u.uid)}data/manifest.json`);

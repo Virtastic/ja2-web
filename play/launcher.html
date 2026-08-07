@@ -609,13 +609,50 @@
    card.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); cloudOpenModal(); } });
    const hc = $('help-cloud');
    if (hc){ hc.addEventListener('click', e=>{ e.stopPropagation(); window.__modalOpen(
-       '<div class="m-kicker">Cloud Locker</div><h3 id="modal-title">Your data & saves, everywhere</h3>'
-     + '<p>Sign in with Google (Discord and Microsoft are coming) and your JA2 game data + savegames are '
+       '<div class="m-kicker">Cloud Locker</div><h3 id="modal-title">Your data &amp; saves, everywhere</h3>'
+     + '<p>Sign in with Google (Discord and Microsoft are coming) and your JA2 game data and savegames are '
      + 'kept on your account. Log in on any machine and your locker is right there - no re-picking your '
-     + 'Data folder, no lost saves.</p>'
-     + '<h4>What we store</h4><ul><li>Your JA2 <b>Data</b> folder (verified against the known GOG/Steam '
-     + 'editions on upload).</li><li>Your savegames, synced automatically as you play.</li></ul>'
-     + '<p>Files live in your own private storage; nothing is shared or made public.</p>'); });
+     + 'Data folder, no lost saves. You upload once; after that the browser keeps a local copy, so it '
+     + 'does not download again.</p>'
+
+     + '<h4>What you need</h4>'
+     + '<p>A copy of Jagged Alliance 2 you already own, installed on this computer. We do not supply the '
+     + 'game. You are looking for one folder called <code>Data</code> - the one holding the '
+     + '<code>.slf</code> archives such as <code>JAGGED ALLIANCE 2.SLF</code> and <code>SPEECH.SLF</code>, '
+     + 'plus subfolders like <code>TILECACHE</code>.</p>'
+
+     + '<h4>GOG</h4>'
+     + '<p>In <b>GOG Galaxy</b>: open Jagged Alliance 2, click the gear next to <b>Play</b>, then '
+     + '<b>Manage installation &rsaquo; Show folder</b>. Otherwise it is where the offline installer put it:</p>'
+     + '<ul>'
+     + '<li><b>Windows</b> <code>C:\\GOG Games\\Jagged Alliance 2 Gold\\Data</code></li>'
+     + '<li><b>Linux</b> <code>~/GOG Games/Jagged Alliance 2 Gold/game/Data</code></li>'
+     + '<li><b>macOS</b> right-click the app in Applications &rsaquo; <b>Show Package Contents</b>, then '
+     + '<code>Contents/Resources/game/Data</code></li>'
+     + '</ul>'
+
+     + '<h4>Steam</h4>'
+     + '<p>Right-click <b>Jagged Alliance 2</b> in your Library &rsaquo; <b>Manage &rsaquo; Browse local '
+     + 'files</b>. The window opens on the game folder; <code>Data</code> is inside it. Typically:</p>'
+     + '<ul>'
+     + '<li><b>Windows</b> <code>C:\\Program Files (x86)\\Steam\\steamapps\\common\\Jagged Alliance 2\\Data</code></li>'
+     + '<li><b>A second drive / custom library</b> use <b>Browse local files</b> rather than guessing, '
+     + 'e.g. <code>D:\\SteamLibrary\\steamapps\\common\\Jagged Alliance 2\\Data</code></li>'
+     + '</ul>'
+     + '<p><b>Windows blocks Program Files.</b> Browsers refuse to open folders there, which is exactly '
+     + 'where Steam installs by default - so copy the <code>Data</code> folder to <b>Documents</b> or '
+     + '<b>Desktop</b> and pick the copy. GOG installs under <code>C:\\GOG Games\\</code> are fine as they are.</p>'
+
+     + '<h4>Not sure you have the right folder?</h4>'
+     + '<p>The right one has files ending in <code>.slf</code> directly inside it. If you see '
+     + '<code>ja2.exe</code> but no <code>.slf</code> files you are one level too high - open '
+     + '<code>Data</code> inside it. You can also just pick the game folder and we will find '
+     + '<code>Data</code> for you.</p>'
+
+     + '<h4>What we store</h4><ul><li>Your JA2 <b>Data</b> folder, checked against the known GOG and Steam '
+     + 'releases as it uploads.</li><li>Your savegames, synced automatically as you play.</li></ul>'
+     + '<p>Files live in your own private storage; nothing is shared or made public. Only Chrome, Edge or '
+     + 'Brave on desktop can open a folder this way.</p>'); });
      hc.addEventListener('keydown', e=>{ e.stopPropagation(); }); }
  })();
 

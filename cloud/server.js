@@ -272,8 +272,10 @@ const PROVIDERS = {
     parse: (u) => ({ sub: u.sub, name: u.name || u.email, email: u.email }),
   },
   microsoft: {
-    authorize: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    token: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    // MICROSOFT_TENANT defaults to "common" (any Microsoft account). A single-tenant app registration
+    // rejects /common with AADSTS50194, so point it at the directory (tenant) ID in that case.
+    authorize: `https://login.microsoftonline.com/${env.MICROSOFT_TENANT || 'common'}/oauth2/v2.0/authorize`,
+    token: `https://login.microsoftonline.com/${env.MICROSOFT_TENANT || 'common'}/oauth2/v2.0/token`,
     userinfo: 'https://graph.microsoft.com/oidc/userinfo', scope: 'openid email profile',
     id: env.MICROSOFT_CLIENT_ID, secret: env.MICROSOFT_CLIENT_SECRET,
     parse: (u) => ({ sub: u.sub, name: u.name || u.email, email: u.email }),

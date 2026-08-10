@@ -17,6 +17,7 @@ import { Transform } from 'node:stream';
 import path from 'node:path';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
+import { attioCapture } from './attio.mjs';
 import { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -27,6 +28,9 @@ const COOKIE_SECURE = env.COOKIE_SECURE !== '0' && BASE_URL.startsWith('https');
 // crash-looping. Sessions won't survive a restart, but that only matters once OAuth env is provided.
 const JWT_SECRET = env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 if (!env.JWT_SECRET) console.warn('JWT_SECRET unset - using an ephemeral key (sessions reset on restart)');
+// ---- Attio CRM capture (see cloud/attio.mjs for the design + privacy note) ----------------------
+const ATTIO = { apiKey: env.ATTIO_API_KEY || '', baseUrl: env.ATTIO_BASE_URL || 'https://api.attio.com' };
+
 const DEV_AUTH = env.DEV_AUTH === '1';            // enables /api/auth/dev/login for headless E2E
 // Sessions last one BROWSER session, like openmw-web: the cookie carries no Max-Age so it dies when
 // the browser closes, and the JWT expires after a day as the backstop for browsers that restore
@@ -371,7 +375,7 @@ async function totalUsage() {
 }
 
 app.get('/api/health', async () => ({ ok: true, storage: store.kind,
-  verifyData: Boolean(VERIFY_DATA && EDITION_PATHS), knownFiles: EDITION_PATHS, sizeTolerance: SIZE_TOLERANCE,
+  verifyData: Boolean(VERIFY_DATA && EDITION_PATHS), knownFiles: EDITION_PATHS, sizeTolerance: SIZE_TOLERANCE, crm: Boolean(ATTIO.apiKey),
   limits: { maxFileBytes: MAX_FILE_BYTES, maxSaveBytes: MAX_SAVE_BYTES, maxUserBytes: MAX_USER_BYTES, maxUserFiles: MAX_USER_FILES },
   providers: Object.fromEntries(Object.entries(PROVIDERS).map(([k, v]) => [k, Boolean(v.id && v.secret)])) }));
 
@@ -422,6 +426,9 @@ app.get('/api/auth/:provider/callback', async (req, reply) => {
     const uid = uidFor(name, info.sub);
     await store.putJson(`${userPrefix(uid)}user.json`,
       { uid, provider: name, name: info.name, email: info.email, updated: new Date().toISOString() });
+    // Not awaited: sign-in must not wait on the CRM.
+    attioCapture({ ...ATTIO, log: (lvl, msg, meta) => app.log[lvl](meta, msg) },
+      { email: info.email, name: info.name, provider: name });
     setSession(reply, uid, info.name || 'player');
     return reply.redirect('/index.html?src=cloud');   // straight into the game - the launcher was just the door
   } catch (e) {

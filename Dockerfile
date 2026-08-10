@@ -50,7 +50,7 @@ FROM nginx:1.27-alpine AS runtime
 # as the landing page, immutable caching for wasm/data/js. Replaces the stock default.conf.
 COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
 # Static web files straight from the build context (editing them = a fast runtime-only rebuild).
-COPY play/index.html play/launcher.html play/settings.html /usr/share/nginx/html/
+COPY play/index.html play/launcher.html play/settings.html play/privacy.html /usr/share/nginx/html/
 
 # Cloud Locker on/off for this deployment. It is a deployment fact, not something the page should
 # discover at runtime, so the tile is simply removed when the feature is off. Build with

@@ -65,6 +65,25 @@ c=$(curl -s -o /dev/null -w '%{http_code}' -b "$J" -X PUT -H 'Transfer-Encoding:
 [ "$c" = 413 ] && pass "chunked oversized body rejected (no Content-Length to trust)" || fail "chunked upload" "got $c"
 [ -f "$TMP/data/users/$UID_A/data/ok.slf" ] && fail "partial file" "oversized upload left a file behind" || pass "no partial file left on disk"
 
+# --- chunked upload (the Cloudflare >100 MB workaround): assembly, ordering, and the total cap ---
+head -c 600000 /dev/zero > "$TMP/chunkA.bin"; head -c 400000 /dev/zero > "$TMP/chunkB.bin"
+U=$(jsonp /api/data/presign '{"path":"chunky.slf","size":1000000}' | sed 's/.*"url":"//;s/".*//')
+c=$(code -X PUT --data-binary @"$TMP/chunkA.bin" -H 'x-ja2-chunk-offset: 0' -H 'x-ja2-total-size: 1000000' "$B$U")
+[ "$c" = 200 ] && pass "chunk 1 accepted" || fail "chunk 1" "got $c"
+[ -f "$TMP/data/users/$UID_A/data/chunky.slf" ] && fail "chunk visibility" "partial visible as final file" \
+  || pass "partial upload not visible as the final file"
+# Out-of-order chunk must 409 (wrong offset), not corrupt the partial.
+c=$(code -X PUT --data-binary @"$TMP/chunkB.bin" -H 'x-ja2-chunk-offset: 999' -H 'x-ja2-total-size: 1000000' "$B$U")
+[ "$c" = 409 ] && pass "out-of-order chunk rejected (409)" || fail "chunk ordering" "got $c"
+c=$(code -X PUT --data-binary @"$TMP/chunkB.bin" -H 'x-ja2-chunk-offset: 600000' -H 'x-ja2-total-size: 1000000' "$B$U")
+[ "$c" = 200 ] && pass "final chunk accepted" || fail "final chunk" "got $c"
+sz=$(stat -c %s "$TMP/data/users/$UID_A/data/chunky.slf" 2>/dev/null || stat -f %z "$TMP/data/users/$UID_A/data/chunky.slf" 2>/dev/null)
+[ "$sz" = 1000000 ] && pass "chunks assembled to the full file" || fail "chunk assembly" "size $sz"
+curl -s -o /dev/null -b "$J" -X DELETE "$B$U"   # clean up before the quota test below
+# A chunked total over the per-file cap must be refused up front.
+c=$(code -X PUT --data-binary @"$TMP/chunkA.bin" -H 'x-ja2-chunk-offset: 0' -H 'x-ja2-total-size: 99999999' "$B$U")
+[ "$c" = 400 -o "$c" = 413 ] && pass "chunked total over per-file cap rejected" || fail "chunked cap" "got $c"
+
 # --- account quota: 3 MB total, 1 MB per file ---------------------------------------------------
 head -c 1000000 /dev/zero > "$TMP/1mb.bin"
 okc=0; rej=0

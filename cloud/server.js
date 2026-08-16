@@ -219,6 +219,33 @@ function localStore() {
       catch (e) { await this.del(key).catch(() => {}); throw e; }
       return seen;
     },
+    // One chunk of a client-sliced upload (Cloudflare caps proxied request bodies at ~100 MB, so
+    // big archives arrive in parts). Chunks are strictly sequential: the partial lives at
+    // <key>.part and a chunk is only accepted when its offset equals the bytes already there -
+    // anything else is EBADOFFSET carrying the real offset so the client can resume. The partial
+    // only becomes the real object by rename once exactly `total` bytes have landed, so a died
+    // upload can never be served as game data (.part fails the data-extension gate on GET).
+    // On a failed chunk the partial is truncated back to its pre-chunk length, not deleted:
+    // the earlier chunks stay good and the client retries just the one that broke.
+    async appendStream(key, stream, offset, total) {
+      const part = abs(key) + '.part';
+      await fs.mkdir(path.dirname(abs(key)), { recursive: true });
+      const current = (await fs.stat(part).catch(() => null))?.size ?? 0;
+      if (offset !== 0 && offset !== current)   // offset 0 always allowed: it restarts the upload
+        throw Object.assign(new Error('bad offset'), { code: 'EBADOFFSET', offset: current });
+      let seen = 0;
+      const guard = new Transform({ transform(chunk, _enc, cb) {
+        seen += chunk.length;
+        if (offset + seen > total) { cb(Object.assign(new Error('too large'), { code: 'ETOOBIG' })); return; }
+        cb(null, chunk);
+      } });
+      try { await pipeline(stream, guard, createWriteStream(part, { flags: offset === 0 ? 'w' : 'a' })); }
+      catch (e) { await fs.truncate(part, offset).catch(() => {}); throw e; }
+      const size = offset + seen;
+      if (size < total) return { size, complete: false };
+      await fs.rename(part, abs(key));
+      return { size, complete: true };
+    },
     size(key) { return fs.stat(abs(key)).then((s) => s.size).catch(() => null); },
     async del(key) { try { await fs.unlink(abs(key)); } catch (e) { if (e.code !== 'ENOENT') throw e; } },
     async usage(prefix) {                                    // recursive {bytes,files}
@@ -560,6 +587,34 @@ if (store.kind === 'local') {
     if (req.method === 'PUT') {
       if (!req.body || typeof req.body.pipe !== 'function') return reply.code(400).send({ error: 'no body' });
       const cap = isData ? MAX_FILE_BYTES : MAX_SAVE_BYTES;
+
+      // Chunked upload: the client slices files that would trip Cloudflare's ~100 MB request-body
+      // cap and sends each slice with x-ja2-chunk-offset/x-ja2-total-size. Every constraint is
+      // enforced against the TOTAL the chunk claims (which the byte guard then holds it to), so a
+      // sliced upload can do nothing a whole one couldn't.
+      const offH = req.headers['x-ja2-chunk-offset'], totH = req.headers['x-ja2-total-size'];
+      if (offH !== undefined || totH !== undefined) {
+        const offset = Number(offH), totalSz = Number(totH);
+        if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(totalSz)
+            || totalSz <= 0 || totalSz > cap || offset >= totalSz)
+          return reply.code(400).send({ error: 'bad chunk headers' });
+        if (isData && VERIFY_DATA && EDITION_PATHS
+            && !classify(clean, totalSz, req.headers['x-ja2-md5']))
+          return reply.code(422).send({ error: `not a recognized Jagged Alliance 2 data file: ${clean}`, notGameData: true });
+        // The .part bytes already on disk count toward usage, so only the REMAINDER is incoming.
+        const room = await checkQuota(u.uid, totalSz - offset, safeKey, true);
+        if (room.error) return reply.code(413).send(room);
+        try {
+          const r = await store.appendStream(safeKey, req.body, offset, totalSz);
+          if (r.complete) bumpUsage(u.uid, totalSz);
+          return { ok: true, size: r.size, complete: r.complete };
+        } catch (e) {
+          if (e?.code === 'EBADOFFSET') return reply.code(409).send({ error: 'chunk out of order', offset: e.offset });
+          if (e?.code === 'ETOOBIG') return reply.code(413).send({ error: 'too large' });
+          throw e;
+        } finally { room.release(); }
+      }
+
       // Reject on the declared length first (cheap), then enforce for real while streaming.
       const declared = Number(req.headers['content-length']);
       if (Number.isFinite(declared) && declared > cap) return reply.code(413).send({ error: `too large (max ${cap} bytes)` });
@@ -579,7 +634,7 @@ if (store.kind === 'local') {
         throw e;
       } finally { room.release(); }
     }
-    if (req.method === 'DELETE') { await store.del(safeKey); return { ok: true }; }
+    if (req.method === 'DELETE') { await store.del(safeKey); await store.del(safeKey + '.part'); return { ok: true }; }
     const size = await store.size(safeKey);
     if (size === null) return reply.code(404).send({ error: 'not found' });
     reply.header('content-type', 'application/octet-stream').header('content-length', size);

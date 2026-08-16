@@ -788,6 +788,26 @@ async function runCloudWizard(){
         var uploaded=[], rejected=[], digests={};     // what landed, and what was refused as not-a-known-release
         var fatal = null;                             // quota/auth/server error: stop starting new files
 
+        // Cloudflare fronts the site and rejects proxied request bodies over ~100 MB, so a
+        // same-origin blob upload (local-storage mode) slices anything bigger into 64 MB parts
+        // the server reassembles (x-ja2-chunk-offset/x-ja2-total-size). Presigned S3 URLs are
+        // not behind Cloudflare and keep the single PUT.
+        var CLOUD_CHUNK = 64*1024*1024;
+        async function putBlob(url, file, digest, extraHeaders, onSent){
+          if (!/^\/api\/blob\//.test(url) || file.size <= CLOUD_CHUNK)
+            return fetch(url, { method:'PUT', body:file, headers:extraHeaders||{} });
+          var put = null;
+          for (var off = 0; off < file.size; off += CLOUD_CHUNK){
+            var end = Math.min(off + CLOUD_CHUNK, file.size);
+            put = await fetch(url, { method:'PUT', body:file.slice(off, end),
+              headers:{ 'x-ja2-chunk-offset':String(off), 'x-ja2-total-size':String(file.size),
+                        'x-ja2-md5':digest||'' } });
+            if (!put.ok) return put;
+            if (onSent) onSent(end);
+          }
+          return put;
+        }
+
         async function uploadOne(p){
           var k=rowKeyFor(p), many=total[k]>1;
           var file=await have[p].handle.getFile();
@@ -809,7 +829,9 @@ async function runCloudWizard(){
             wiz.set(k,'err','failed'); fatal = msg.error || 'Upload was refused. Try signing in again.'; return;
           }
           var grant=await pr.json();
-          var put=await fetch(grant.url,{ method:'PUT', body:file, headers:grant.headers||{} });
+          var put=await putBlob(grant.url, file, digest, grant.headers, function(sent){
+            wiz.set(k,'busy', many ? (done[k]+'/'+total[k]) : ('uploading… '+Math.round(sent/file.size*100)+'%'));
+          });
           if (!put.ok){
             // A presigned PUT carries the expected size and, when the size identifies exactly one
             // release, its checksum. Storage answers 400 when the bytes don't match that - i.e. the

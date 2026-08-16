@@ -6,6 +6,13 @@ port changes below.
 
 ## [Unreleased]
 
+### Fixed
+- Cloud Locker uploads of files over 100 MB no longer fail behind Cloudflare. Cloudflare
+  caps proxied request bodies at ~100 MB, so same-origin uploads (local-storage mode) now
+  slice large files into 64 MB chunks the server reassembles; the assembled file only
+  becomes visible once every byte has landed, and all size/quota/verification limits are
+  enforced against the whole file. Direct-to-S3 uploads are unaffected (not proxied).
+
 ## [1.0.1] - 2026-08-07
 
 ### Added

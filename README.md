@@ -12,6 +12,10 @@
 </p>
 
 [![Discord](https://img.shields.io/badge/Discord-join%20the%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/PzFfDkbSue)
+[![Support on Patreon](https://img.shields.io/badge/Patreon-support-F96854?logo=patreon&logoColor=white)](https://www.patreon.com/virtastic)
+[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-buy%20us%20a%20coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/virtastic)
+[![YouTube](https://img.shields.io/badge/YouTube-Virtastic-FF0000?logo=youtube&logoColor=white)](https://www.youtube.com/@Virtastic-Apps)
+[![Reddit](https://img.shields.io/badge/Reddit-r%2Fvirtastic-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/virtastic)
 ![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPLv3-blue)
 ![Platform: Chrome desktop](https://img.shields.io/badge/browser-Chrome%20%2F%20Chromium-brightgreen)
 [![Latest release](https://img.shields.io/github/v/release/Virtastic/ja2-web)](https://github.com/Virtastic/ja2-web/releases)
@@ -176,6 +180,8 @@ copyrighted assets.
   and news.
 - **[YouTube (@Virtastic-Apps)](https://www.youtube.com/@Virtastic-Apps)** - demos, build
   logs, and other native-to-browser ports we're working on.
+- **[Reddit (r/virtastic)](https://www.reddit.com/r/virtastic)** - releases and discussion.
+- **[LinkedIn](https://www.linkedin.com/company/virtastic)** - company news.
 - **[GitHub Discussions](https://github.com/Virtastic/ja2-web/discussions)** - longer-form
   questions and showcase threads.
 

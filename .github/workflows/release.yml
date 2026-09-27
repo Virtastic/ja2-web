@@ -40,6 +40,7 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
           docker push "$IMAGE:$TAG"
           docker push "$IMAGE:latest"
+          docker logout ghcr.io   # don't leave the token in the shared runner's docker config
 
       # Self-host bundle = the image's web root + server.py + a standalone Dockerfile/compose/nginx.
       - name: Bundle

@@ -72,13 +72,16 @@ Plus:
 server {
     listen 443 ssl http2;
     root /srv/ja2-web;
-    types { application/wasm wasm; }
+    # nginx's stock mime.types already maps .wasm. Don't add a `types {}` block here: it
+    # REPLACES the whole map, and index.html then downloads instead of rendering.
 
     add_header Cross-Origin-Opener-Policy   same-origin   always;
     add_header Cross-Origin-Embedder-Policy require-corp  always;
     add_header Cross-Origin-Resource-Policy cross-origin  always;
 
     gzip_static on;   # serve the .gz siblings
+
+    location = / { try_files /launcher.html =404; }   # land on the chooser
 }
 ```
 
@@ -94,6 +97,7 @@ example.com {
         Cross-Origin-Embedder-Policy require-corp
         Cross-Origin-Resource-Policy cross-origin
     }
+    rewrite / /launcher.html   # exact "/" only: land on the chooser
     file_server {
         precompressed gzip
     }

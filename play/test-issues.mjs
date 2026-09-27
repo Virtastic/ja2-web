@@ -9,8 +9,8 @@ const consts = src.match(/var EDIT_SCREEN = [^\n]*/)[0];
 const isFullFrame = new Function(`${consts}
 ${src.match(/function isFullFrame\(screen\)\{[^\n]*\}/)[0]}
 return isFullFrame;`)();
-assert(isFullFrame(5) && isFullFrame(19) && isFullFrame(0), 'tactical/shop/editor are full-frame');
-assert(!isFullFrame(9) && !isFullFrame(10) && !isFullFrame(15) && !isFullFrame(-1), 'map/laptop/menu/pre-boot are centered UI');
+for (const s of [5, 19, 0, 11]) assert(isFullFrame(s), `screen ${s} is full-frame`);           // tactical, shop, editor, editor file dialog
+for (const s of [9, 10, 15, 16, 17, 18, 21, -1]) assert(!isFullFrame(s), `screen ${s} is centered UI`); // map, laptop, menu, autoresolve, save/load, options, init-options, pre-boot
 
 // #8 / hosted data: only the engine's own files live in the versioned e/<hash>/ dir.
 const __ENGINE_DIR = 'e/abc/';

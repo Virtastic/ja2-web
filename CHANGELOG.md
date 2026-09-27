@@ -6,6 +6,15 @@ port changes below.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-09-27
+
+### Fixed
+- The map editor's file dialog is presented full-frame like the editor itself, instead of
+  being zoomed as a 640x480 screen (same class of bug as #6).
+- SELF_HOSTING.md: the nginx example's `types {}` block replaced nginx's whole MIME map,
+  so `index.html` downloaded instead of rendering; removed. The nginx and Caddy examples
+  now land on the launcher at `/`.
+
 ## [1.0.2] - 2026-09-27
 
 ### Added

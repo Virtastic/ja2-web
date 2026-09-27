@@ -6,6 +6,49 @@ port changes below.
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-27
+
+A sweep for more bugs of the same kinds as #5, #6 and #8.
+
+### Fixed
+- **UI off-screen on non-battle screens** (same class as #6). The game renders at your
+  window size but shows only the centered 640x480 area outside battle, and several places
+  still drew at the edges of the whole frame:
+  - Autoresolve for large battles (9 columns) put the panel and its Play/Fast/Finish/
+    Retreat/Done buttons off-screen; tall windows shifted the panel up out of view; and
+    the enemy surrender offer text was misplaced.
+  - Bobby Ray's "under construction" page.
+  - Map-screen squad/assignment popups for mercs low in the list ran off the bottom.
+  - Tooltips and map help text near an edge were cut off instead of pulled inside.
+  - Main menu version and copyright line, the laptop power/HD lights, the laptop power-on
+    graphic, the pre-battle panel background and the error screen text.
+  - Editor utilities and debug screens are presented full-frame like the editor.
+- **Saves** (same class as #5 - browser storage behaving unlike a disk):
+  - A save is written to browser storage right away, not up to 15 seconds later, so
+    closing the tab just after saving no longer loses it.
+  - If browser storage refuses a save (quota full, blocked), a red banner says so instead
+    of the save silently vanishing on reload. The site also asks the browser not to evict
+    its storage.
+  - Saves loaded from your folder or Cloud Locker keep their real time, so the save list
+    is in order and autosave overwrites the older slot, not an arbitrary one.
+  - The engine's per-session temp folder was left in browser storage every time a tab was
+    closed, growing storage and boot time forever; old ones are now cleared at start.
+- **Errors**: a repeated in-game error now stops with a message instead of silently
+  reloading to the main menu. The "Pixel perfect" scaling option, which could abort at
+  start on smaller screens, is gone (existing configs use Linear).
+- **Serving** (same class as #8):
+  - Hosted `ja2-gamedata.{js,data}` and their 404s were cached for a year: replacing the
+    data left players on a mismatched pair, and a player who visited before the data was
+    added kept bouncing to the launcher. Only the content-versioned engine is cached
+    immutably now; everything else revalidates.
+  - `server.py` now serves the `.gz` files the release bundle ships (~10 MB wasm → ~3 MB),
+    and no longer hangs a client on an unsatisfiable range request.
+  - `docker run` of the image without a Cloud Locker backend answers `/api` in 3 s
+    instead of 30.
+  - SELF_HOSTING.md examples set correct cache headers and note that the Cloud Locker
+    needs the domain root.
+- A broken nginx config now fails the image build instead of the deploy.
+
 ## [1.0.3] - 2026-09-27
 
 ### Fixed

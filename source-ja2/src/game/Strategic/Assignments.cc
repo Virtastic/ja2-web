@@ -5043,7 +5043,7 @@ static void CreateSquadBox(void)
 	DetermineBoxPositions();
 
 	SGPBox const& area  = GetBoxArea(box);
-	INT16  const  max_y = SCREEN_HEIGHT - area.h;
+	INT16  const  max_y = VisibleUIArea().y + VisibleUIArea().h - area.h;
 	if (giBoxY > max_y)
 	{
 		SquadPosition.iY = max_y;
@@ -5067,7 +5067,7 @@ static void CreateEPCBox(void)
 	ResizeBoxToText(box);
 
 	SGPBox const& area  = GetBoxArea(box);
-	INT16  const  max_y = SCREEN_HEIGHT - area.h;
+	INT16  const  max_y = VisibleUIArea().y + VisibleUIArea().h - area.h;
 	if (giBoxY > max_y)
 	{
 		AssignmentPosition.iY = max_y;
@@ -5416,7 +5416,7 @@ static void AdjustBoxPos(SGPBox const& assignment_area, PopUpBox* const other_bo
 {
 	SGPBox const& other_area = GetBoxArea(other_box);
 
-	INT16 const max_x = SCREEN_WIDTH - assignment_area.w - other_area.w;
+	INT16 const max_x = VisibleUIArea().x + VisibleUIArea().w - assignment_area.w - other_area.w;
 	if (gsAssignmentBoxesX > max_x)
 	{
 		gsAssignmentBoxesX = max_x;
@@ -5461,7 +5461,7 @@ static void CheckAndUpdateTacticalAssignmentPopUpPositions(void)
 		SGPBox const& train_area = GetBoxArea(ghTrainingBox);
 		SGPBox const& attr_area  = GetBoxArea(ghAttributeBox);
 
-		INT16 const max_x = SCREEN_WIDTH - assignment_area.w - train_area.w - attr_area.w;
+		INT16 const max_x = VisibleUIArea().x + VisibleUIArea().w - assignment_area.w - train_area.w - attr_area.w;
 		if (gsAssignmentBoxesX > max_x)
 		{
 			gsAssignmentBoxesX = max_x;
@@ -5488,7 +5488,7 @@ static void CheckAndUpdateTacticalAssignmentPopUpPositions(void)
 	else
 	{
 		// just the assignment box
-		INT16 const max_x = SCREEN_WIDTH - assignment_area.w;
+		INT16 const max_x = VisibleUIArea().x + VisibleUIArea().w - assignment_area.w;
 		if (gsAssignmentBoxesX > max_x)
 		{
 			gsAssignmentBoxesX = max_x;

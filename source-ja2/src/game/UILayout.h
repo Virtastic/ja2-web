@@ -43,6 +43,11 @@
 #define TEAMPANEL_BUTTONSBOX_WIDTH      (142)    // width of the container of the buttons on the right of team panel
 #define TEAMPANEL_HEIGHT                (120)    // height of the bottom bar team panel
 
+/* The part of the framebuffer the player can see on the current screen. The web page shows only the
+ * centered 640x480 area of every screen except the full-framebuffer ones (play/index.html isFullFrame
+ * - keep the two lists in sync), so popups/tooltips clamped to SCREEN_WIDTH/HEIGHT can land off-view. */
+SGPBox VisibleUIArea();
+
 
 /////////////////////////////////////////////////////////////
 // type definitions

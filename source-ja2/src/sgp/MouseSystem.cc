@@ -808,13 +808,14 @@ static void DisplayFastHelp(MOUSE_REGION* const r)
 	INT32 const w = GetWidthOfString(r->FastHelpText) + 10;
 	INT32 const h = GetNumberOfLinesInHeight(r->FastHelpText) * (GetFontHeight(FONT10ARIAL) + 1) + 8;
 
+	SGPBox const vis = VisibleUIArea();
 	INT32 x = r->RegionTopLeftX + 10;
-	if (x <  0)                x = 0;
-	if (x >= SCREEN_WIDTH - w) x = SCREEN_WIDTH - w - 4;
+	if (x <  vis.x)                x = vis.x;
+	if (x >= vis.x + vis.w - w)    x = vis.x + vis.w - w - 4;
 
 	INT32 y = r->RegionTopLeftY - h * 3 / 4;
-	if (y <  0)                 y = 0;
-	if (y >= SCREEN_HEIGHT - h) y = SCREEN_HEIGHT - h - 15;
+	if (y <  vis.y)                y = vis.y;
+	if (y >= vis.y + vis.h - h)    y = vis.y + vis.h - h - 15;
 
 	if (!r->HasFastHelp())
 	{

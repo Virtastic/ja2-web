@@ -1769,24 +1769,25 @@ static void DisplayUserDefineHelpTextRegions(FASTHELPREGION* pRegion)
 	// tack on the outer border
 	iH += 14;
 
+	SGPBox const vis = VisibleUIArea();
 	// gone not far enough?
-	if ( iX < 0 )
-		iX = 0;
+	if ( iX < vis.x )
+		iX = vis.x;
 
 	// gone too far
-	if ( ( pRegion->iX + iW ) >= SCREEN_WIDTH )
-		iX = (SCREEN_WIDTH - iW - 4);
+	if ( ( pRegion->iX + iW ) >= vis.x + vis.w )
+		iX = (vis.x + vis.w - iW - 4);
 
 	// what about the y value?
 	iY = (INT32)pRegion->iY - (  iH * 3 / 4);
 
 	// not far enough
-	if (iY < 0)
-		iY = 0;
+	if (iY < vis.y)
+		iY = vis.y;
 
 	// too far
-	if ( (iY + iH) >= SCREEN_HEIGHT )
-		iY = (SCREEN_HEIGHT - iH - 15);
+	if ( (iY + iH) >= vis.y + vis.h )
+		iY = (vis.y + vis.h - iH - 15);
 
 	{ SGPVSurface::Lock l(FRAME_BUFFER);
 		SetClippingRegionAndImageWidth(l.Pitch(), 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);

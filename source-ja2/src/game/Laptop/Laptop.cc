@@ -2400,7 +2400,7 @@ static void FlickerHDLight(void)
 		uiBaseTime         = 0;
 		uiTotalDifference  = 0;
 		fFlickerHD        = FALSE;
-		InvalidateRegion(88, 466, 102, 477);
+		InvalidateRegion(STD_SCREEN_X + 88, STD_SCREEN_Y + 466, STD_SCREEN_X + 102, STD_SCREEN_Y + 477);
 		return;
 	}
 
@@ -2411,7 +2411,7 @@ static void FlickerHDLight(void)
 		if (fLoadPendingFlag) uiTotalDifference = 0;
 
 		fHardDriveLightOn = (Random(2) == 0);
-		InvalidateRegion(88, 466, 102, 477);
+		InvalidateRegion(STD_SCREEN_X + 88, STD_SCREEN_Y + 466, STD_SCREEN_X + 102, STD_SCREEN_Y + 477);
 	}
 }
 
@@ -2430,7 +2430,7 @@ static BOOLEAN ExitLaptopDone(void)
 
 	fPowerLightOn = FALSE;
 
-	InvalidateRegion(44, 466, 58, 477);
+	InvalidateRegion(STD_SCREEN_X + 44, STD_SCREEN_Y + 466, STD_SCREEN_X + 58, STD_SCREEN_Y + 477);
 	// get the current difference
 	const UINT32 iDifference = GetJA2Clock() - uiBaseTime;
 

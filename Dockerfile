@@ -49,6 +49,8 @@ FROM nginx:1.27-alpine AS runtime
 # The purpose-built vhost: COOP/COEP/CORP on every response (SharedArrayBuffer/pthreads), launcher
 # as the landing page, immutable caching for wasm/data/js. Replaces the stock default.conf.
 COPY infra/nginx.conf /etc/nginx/conf.d/default.conf
+# A config error must fail the BUILD, not take the live site down at `compose up`.
+RUN nginx -t
 # Static web files straight from the build context (editing them = a fast runtime-only rebuild).
 COPY play/index.html play/launcher.html play/settings.html play/privacy.html /usr/share/nginx/html/
 

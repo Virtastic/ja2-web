@@ -86,10 +86,10 @@ ScreenID ErrorScreenHandle(void)
 
 	// Create string
 	SetFontAttributes(LARGEFONT1, FONT_MCOLOR_LTGRAY);
-	MPrint(50, 200, "RUNTIME ERROR");
-	MPrint(50, 225, "PRESS <ESC> TO EXIT");
+	MPrint(STD_SCREEN_X + 50, STD_SCREEN_Y + 200, "RUNTIME ERROR");
+	MPrint(STD_SCREEN_X + 50, STD_SCREEN_Y + 225, "PRESS <ESC> TO EXIT");
 
-	DisplayWrappedString(50, 255, MAP_SCREEN_WIDTH - 50, 5, FONT12ARIAL, FONT_YELLOW, gubErrorText, 0, 0);
+	DisplayWrappedString(STD_SCREEN_X + 50, STD_SCREEN_Y + 255, 640 - 100, 5, FONT12ARIAL, FONT_YELLOW, gubErrorText, 0, 0);
 
 	if ( !fFirstTime )
 	{

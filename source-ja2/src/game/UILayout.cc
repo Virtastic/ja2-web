@@ -134,7 +134,25 @@ void UILayout::recalculatePositions()
 	m_repairPosition.set(         m_stdScreenOffsetX + 160, m_stdScreenOffsetY + 150);
 	m_assignmentPosition.set(     m_stdScreenOffsetX + 120, m_stdScreenOffsetY + 150);
 	m_squadPosition.set(          m_stdScreenOffsetX + 160, m_stdScreenOffsetY + 150);
-	m_versionPosition.set(        10, m_screenHeight - 15);
+	m_versionPosition.set(        m_stdScreenOffsetX + 10, m_stdScreenOffsetY + 480 - 15);
+}
+
+SGPBox VisibleUIArea()
+{
+	SGPBox const full = { 0, 0, (UINT16)SCREEN_WIDTH, (UINT16)SCREEN_HEIGHT };
+#ifdef __EMSCRIPTEN__
+	switch (guiCurrentScreen)
+	{
+		case GAME_SCREEN: case SHOPKEEPER_SCREEN: case EDIT_SCREEN: case LOADSAVE_SCREEN:
+		case MAPUTILITY_SCREEN: case PALEDIT_SCREEN: case DEBUG_SCREEN: case QUEST_DEBUG_SCREEN:
+		case MSG_BOX_SCREEN: case FADE_SCREEN: // overlays keep the underlying screen's mode: don't over-clamp
+			return full;
+		default:
+			return SGPBox{ (UINT16)STD_SCREEN_X, (UINT16)STD_SCREEN_Y, 640, 480 };
+	}
+#else
+	return full;
+#endif
 }
 
 /** Get X position of tactical textbox. */

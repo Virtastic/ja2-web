@@ -297,10 +297,13 @@ function setLoading(t){
 // UI-zoom box below a click lands on the exact framebuffer pixel the game expects,
 // so input is accurate in both modes with no engine change.
 var EDIT_SCREEN = 0, GAME_SCREEN = 5, LOADSAVE_SCREEN = 11, FADE_SCREEN = 13, MSG_BOX_SCREEN = 14, SHOPKEEPER_SCREEN = 19;  // ScreenIDs.h
+// Dev/debug screens that also draw across the whole framebuffer: PALEDIT 7, DEBUG 8, MAPUTILITY 12, QUEST_DEBUG 25.
+var FULL_FRAME_DEV = [7, 8, 12, 25];
 // Screens drawn across the WHOLE framebuffer (not centered 640x480 art): tactical, the shopkeeper
 // (panel at 0,0 over the tactical view + the full-width HUD bar - issue #6), and the map editor with
 // its file dialog (LOADSAVE_SCREEN, fixed coords over the editor; NOT the game's SAVE_LOAD_SCREEN).
-function isFullFrame(screen){ return screen === GAME_SCREEN || screen === SHOPKEEPER_SCREEN || screen === EDIT_SCREEN || screen === LOADSAVE_SCREEN; }
+// Keep in sync with VisibleUIArea() in source-ja2/src/game/UILayout.cc (the engine clamps popups to it).
+function isFullFrame(screen){ return screen === GAME_SCREEN || screen === SHOPKEEPER_SCREEN || screen === EDIT_SCREEN || screen === LOADSAVE_SCREEN || FULL_FRAME_DEV.indexOf(screen) >= 0; }
 window.__ja2Screen = (typeof window.__ja2Screen === 'number') ? window.__ja2Screen : -1;
 var _fitBusy = false;
 function layoutCanvas(){
@@ -444,8 +447,10 @@ async function setupFolderSaves(dir){
   var loaded=0;                                       // mirror IN: folder -> MEMFS (folder wins)
   try { for await (const [name,h] of sh.entries()){
     if (h.kind!=='file') continue;
-    try { var buf=new Uint8Array(await (await h.getFile()).arrayBuffer());
+    try { var file=await h.getFile(), buf=new Uint8Array(await file.arrayBuffer());
           FS.writeFile(__JA2_SAVES+'/'+name, buf);
+          // Keep the save's real time: the save list sorts by it and autosave overwrites the older slot.
+          FS.utime(__JA2_SAVES+'/'+name, file.lastModified, file.lastModified);
           try { __mirrored[name]=FS.stat(__JA2_SAVES+'/'+name).mtime.getTime(); } catch(_){}
           loaded++; }
     catch(e){ console.warn('[saves] loading '+name+' failed', e); }
@@ -991,6 +996,8 @@ async function setupCloudSaves(){
         var url = (await pr.json()).url;
         var fr = await fetch(url, { mode:'cors' }); if (!fr.ok) continue;
         FS.writeFile(__JA2_SAVES+'/'+name, new Uint8Array(await fr.arrayBuffer()));
+        var mt = Date.parse(saves[i].mtime);   // real save time (list order, autosave slot choice)
+        if (mt) FS.utime(__JA2_SAVES+'/'+name, mt, mt);
         try { __cloudMirrored[name]=FS.stat(__JA2_SAVES+'/'+name).mtime.getTime(); } catch(_){}
         loaded++;
       } catch(e){ console.warn('[cloud-saves] loading '+name+' failed', e); }
@@ -1060,6 +1067,11 @@ var Module = {
     FS.syncfs(true, function(err){
       if (err) console.warn('IDBFS restore failed', err);
       try { FS.mkdir('/userdata/.ja2'); } catch(e){}
+      // The engine's per-session temp dir (TMPDIR below → /userdata/.ja2/ja2-stracciatella-XXXX) is
+      // only removed on a clean Quit; closing the tab leaves it, and IDBFS then persists and restores
+      // every old one forever. Nothing in them survives a session by design - clear them at boot.
+      try { FS.readdir('/userdata/.ja2').forEach(function(n){
+        if (n.indexOf('ja2-stracciatella-') === 0) rmTree('/userdata/.ja2/' + n); }); } catch(e){}
       (async function(){
         // Merge any launcher-written config.
         var cfg = {};
@@ -1101,7 +1113,9 @@ var Module = {
         // JA2's default "PERFECT" (pixel-perfect) scaling hard-errors when the
         // game resolution exceeds the desktop/display size - which our auto-res
         // routinely does. LINEAR scales any size cleanly, so it's the browser default.
-        if (!cfg.scaling) cfg.scaling = 'LINEAR';
+        // PERFECT also throws at boot whenever the game resolution exceeds the screen size (small
+        // screens, zoomed pages, ?res=WxH) - never usable reliably here, so it maps to LINEAR too.
+        if (!cfg.scaling || cfg.scaling === 'PERFECT') cfg.scaling = 'LINEAR';
         FS.writeFile('/userdata/.ja2/ja2.json', JSON.stringify(cfg, null, 2));
         console.log('ja2 start:', cfg.game_dir, cfg.res, cfg.resversion || 'ENGLISH');
         removeRunDependency('idbfs-restore');
@@ -1156,8 +1170,28 @@ function restartGame(reason){
   }
 }
 
-// Flush saves/config to IndexedDB. Called on interval, tab-hide, and by the game after saves.
-window.__ja2Sync = function(){ try { FS.syncfs(false, function(){}); } catch(e){} try { mirrorSavesToFolder(); } catch(e){} try { mirrorSavesToCloud(); } catch(e){} };
+// Flush saves/config to IndexedDB. Called on interval, tab-hide, and by the game after saves
+// (SaveLoadGame.cc). A failed flush (e.g. storage quota full) means saves exist only in memory and
+// vanish on reload - say so on screen instead of swallowing it.
+function rmTree(p){
+  try { if (!FS.isDir(FS.stat(p).mode)){ FS.unlink(p); return; } } catch(e){ return; }
+  FS.readdir(p).forEach(function(n){ if (n !== '.' && n !== '..') rmTree(p + '/' + n); });
+  try { FS.rmdir(p); } catch(e){}
+}
+var _syncWarned = false;
+function onSyncDone(err){
+  if (!err || _syncWarned) return;
+  _syncWarned = true;
+  console.error('[saves] could not write to browser storage', err);
+  var d = document.createElement('div');
+  d.textContent = 'Saving to browser storage failed (storage full or blocked) - saves made now may be lost on reload. Free up site storage, then save again.';
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99;padding:8px 12px;background:#7a1c12;color:#fff;font:14px sans-serif;text-align:center';
+  d.onclick = function(){ d.remove(); _syncWarned = false; };
+  document.body.appendChild(d);
+}
+// Ask the browser not to evict IndexedDB (saves) under storage pressure. Chrome grants silently.
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
+window.__ja2Sync = function(){ try { FS.syncfs(false, onSyncDone); } catch(e){} try { mirrorSavesToFolder(); } catch(e){} try { mirrorSavesToCloud(); } catch(e){} };
 setInterval(window.__ja2Sync, 15000);
 document.addEventListener('visibilitychange', function(){
   if (document.visibilityState === 'hidden') window.__ja2Sync();
@@ -1237,8 +1271,14 @@ function startPump(){
         return; // stop pumping; restartGame reloads
       }
       if (++window.__pumpErrors > 3){
+        // Don't silently reload to the main menu (that looks like the game "resetting" and hides the
+        // cause): stop and say what happened. Saves already flushed are safe.
         console.error('pump stopped after repeated errors', e);
-        restartGame('error');
+        try { window.__ja2Sync(); } catch(_){}
+        statusEl.classList.remove('hide', 'indet');
+        statusEl.classList.add('err');
+        if (ldStatusEl) ldStatusEl.textContent = 'The game hit an error and stopped';
+        subEl.textContent = String(e && e.message || e) + ' - reload the page to continue from your last save.';
         return; // do not reschedule
       }
       console.error('pump error', e);

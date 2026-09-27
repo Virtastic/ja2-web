@@ -852,7 +852,7 @@ static void BuildInterfaceBuffer(void)
 	//Setup the blitting clip regions, so we don't draw outside of the region (for excess panelling)
 	gpAR->rect.x = (SCREEN_WIDTH  - gpAR->rect.w) / 2;
 	gpAR->rect.y = (SCREEN_HEIGHT - gpAR->rect.h) / 2;
-	if (gpAR->rect.y > 120) gpAR->rect.y -= 40;
+	if ((480 - gpAR->rect.h) / 2 > 120) gpAR->rect.y -= 40; // judge the bump against the 640x480 layout, not a tall screen
 
 	SGPRect DestRect;
 	DestRect.iLeft			= 0;
@@ -1269,7 +1269,7 @@ static void RenderAutoResolve(void)
 
 	if( gpAR->fPendingSurrender )
 	{
-		DisplayWrappedString(gpAR->sCenterStartX + 16, 230 + gpAR->bVerticalOffset, 108, 2, FONT10ARIAL, FONT_YELLOW, gpStrategicString[STR_ENEMY_SURRENDER_OFFER], FONT_BLACK, LEFT_JUSTIFIED);
+		DisplayWrappedString(gpAR->sCenterStartX + 16, STD_SCREEN_Y + 230 + gpAR->bVerticalOffset, 108, 2, FONT10ARIAL, FONT_YELLOW, gpStrategicString[STR_ENEMY_SURRENDER_OFFER], FONT_BLACK, LEFT_JUSTIFIED);
 	}
 
 	if( gpAR->ubBattleStatus != BATTLE_IN_PROGRESS )
@@ -1592,7 +1592,7 @@ static void CreateAutoResolveInterface(void)
 
 	/* If we are bumping up the interface, then also use that piece of info to
 	 * move the buttons up by the same amount. */
-	ar->bVerticalOffset = (SCREEN_HEIGHT - ar->rect.h) / 2 > 120 ? -40 : 0;
+	ar->bVerticalOffset = (480 - ar->rect.h) / 2 > 120 ? -40 : 0; // must match BuildInterfaceBuffer
 
 	const INT16 dx = ar->sCenterStartX;
 	const INT16 dy = ar->bVerticalOffset + SCREEN_HEIGHT / 2;
@@ -2253,7 +2253,7 @@ static void CalculateRowsAndColumns(void)
 	}
 
 	if( gpAR->ubMercCols + gpAR->ubEnemyCols == 9 )
-		gpAR->rect.w = SCREEN_WIDTH;
+		gpAR->rect.w = 640; // the full ORIGINAL width - SCREEN_WIDTH pushed the panel and buttons off the centered 640x480 view
 	else
 		gpAR->rect.w = 146 + 55 * (std::max(int(std::max(gpAR->ubMercCols, gpAR->ubCivCols)), 2) + std::max(int(gpAR->ubEnemyCols), 2));
 

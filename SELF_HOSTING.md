@@ -80,6 +80,19 @@ server {
     add_header Cross-Origin-Resource-Policy cross-origin  always;
 
     gzip_static on;   # serve the .gz siblings
+    gzip_vary   on;
+
+    # Fixed-name files (HTML, the hosted ja2-gamedata pair, manifests) must revalidate -
+    # a stale index.html points at an engine build that's gone, and a stale ja2-gamedata.js
+    # no longer matches its .data. Only the content-versioned engine is immutable.
+    add_header Cache-Control "no-cache" always;
+    location ^~ /e/ {
+        # add_header here replaces the server-level ones, so repeat the isolation headers
+        add_header Cross-Origin-Opener-Policy   same-origin;
+        add_header Cross-Origin-Embedder-Policy require-corp;
+        add_header Cross-Origin-Resource-Policy cross-origin;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
 
     location = / { try_files /launcher.html =404; }   # land on the chooser
 }
@@ -98,6 +111,11 @@ example.com {
         Cross-Origin-Resource-Policy cross-origin
     }
     rewrite / /launcher.html   # exact "/" only: land on the chooser
+    # Only the content-versioned engine is immutable; everything else revalidates.
+    @engine path /e/*
+    header @engine Cache-Control "public, max-age=31536000, immutable"
+    @rest not path /e/*
+    header @rest Cache-Control "no-cache"
     file_server {
         precompressed gzip
     }
@@ -106,6 +124,10 @@ example.com {
 
 Static hosts (Netlify, Cloudflare Pages, …) work too - set the same three
 headers in the host's headers config.
+
+Serve the game from the **domain root** (`example.com/`, not `example.com/ja2/`): the
+Cloud Locker API and its sign-in redirects use absolute `/api/...` and `/index.html`
+paths. The static game itself works under a sub-path.
 
 ## Cloud Locker (optional): sign-in + cloud saves & data
 

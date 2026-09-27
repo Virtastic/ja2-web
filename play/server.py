@@ -113,41 +113,50 @@ class H(http.server.SimpleHTTPRequestHandler):
                     return _Ranged(f, end - start + 1)
                 self.send_response(416)
                 self.send_header('Content-Range', 'bytes */%d' % os.path.getsize(path))
+                self.send_header('Content-Length', '0')   # else a keep-alive client waits for a body
                 self.end_headers()
                 return None
-        # Serve a precompressed sibling (<file>.br) when present, fresh, and accepted -
-        # roughly halves the first-visit download of the .esm/.wasm/.data payloads.
-        # (wasm-build/make_br.sh generates them; the mtime check falls back to the raw
-        # file if a redeploy left a stale .br behind.)
+        # Serve a precompressed sibling (<file>.br, else <file>.gz - the release bundle ships .gz)
+        # when present, fresh, and accepted - ~10 MB wasm → ~3 MB. (The mtime check falls back to
+        # the raw file if a redeploy left a stale sibling behind.)
         path = self.translate_path(self.path.split('?', 1)[0])
-        br = path + '.br'
-        if (not path.endswith('.br') and os.path.isfile(path) and os.path.isfile(br)
-                and os.path.getmtime(br) >= os.path.getmtime(path)
-                and 'br' in self.headers.get('Accept-Encoding', '')):
-            try:
-                f = open(br, 'rb')
-            except OSError:
-                return super().send_head()
-            self.send_response(200)
-            self.send_header('Content-Type', self.guess_type(path))
-            self.send_header('Content-Length', str(os.fstat(f.fileno()).st_size))
-            self.send_header('Content-Encoding', 'br')
-            self.end_headers()
-            return f
+        accept = self.headers.get('Accept-Encoding', '')
+        for ext, enc in (('.br', 'br'), ('.gz', 'gzip')):
+            z = path + ext
+            if (not path.endswith(('.br', '.gz')) and os.path.isfile(path) and os.path.isfile(z)
+                    and os.path.getmtime(z) >= os.path.getmtime(path) and enc in accept):
+                try:
+                    f = open(z, 'rb')
+                except OSError:
+                    break
+                self.send_response(200)
+                self.send_header('Content-Type', self.guess_type(path))
+                self.send_header('Content-Length', str(os.fstat(f.fileno()).st_size))
+                self.send_header('Content-Encoding', enc)
+                self.send_header('Vary', 'Accept-Encoding')
+                self.end_headers()
+                return f
         return super().send_head()
+
+    def send_response(self, code, message=None):
+        self._code = code
+        super().send_response(code, message)
 
     def end_headers(self):
         self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
         self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
         self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
-        # The big build artifacts are immutable - let the browser cache them so
-        # the ~860MB game-data package isn't re-downloaded on every reload.
-        # HTML (and anything else) stays uncached so page edits show up at once.
+        # Same policy as infra/nginx.conf: only the content-versioned engine (e/<hash>/) is immutable,
+        # and only when it was actually found. Fixed-name files - the hosted ja2-gamedata.{js,data}
+        # pair especially - revalidate (a cheap 304), so replacing them, or adding them after a
+        # visitor already got a 404, takes effect. HTML is never stored.
         path = self.path.split('?', 1)[0]
-        if path.endswith(('.wasm', '.data', 'ja2.js', 'ja2-gamedata.js')):
+        if path.startswith('/e/') and getattr(self, '_code', 0) in (200, 206, 304):
             self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+        elif path == '/' or path.endswith('.html'):
+            self.send_header('Cache-Control', 'no-store')
         else:
-            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
+            self.send_header('Cache-Control', 'no-cache')
         super().end_headers()
 
 socketserver.TCPServer.allow_reuse_address = True

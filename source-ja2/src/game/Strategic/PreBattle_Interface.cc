@@ -664,7 +664,7 @@ void KillPreBattleInterface()
 	//Enable the options button when the auto resolve  screen comes up
 	EnableDisAbleMapScreenOptionsButton( TRUE );
 
-	ColorFillVideoSurfaceArea( guiSAVEBUFFER, 0, 0, 261, 359, 0 );
+	ColorFillVideoSurfaceArea( guiSAVEBUFFER, STD_SCREEN_X, STD_SCREEN_Y, STD_SCREEN_X + 261, STD_SCREEN_Y + 359, 0 );
 
 	EnableTeamInfoPanels();
 	if (giMapContractButton) giMapContractButton->Show();

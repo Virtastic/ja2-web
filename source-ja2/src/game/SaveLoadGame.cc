@@ -120,6 +120,9 @@
 #include <array>
 #include <stdexcept>
 #include <utility>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 static const ST::string g_backup_dir     = "Backup";
 static const ST::string g_quicksave_name = "QuickSave";
@@ -488,6 +491,11 @@ BOOLEAN SaveGame(const ST::string& saveName, const ST::string& gameDesc)
 		FileMan::moveFile(GCM->tempFiles()->absolutePath(savegameTempPath), GCM->saveGameFiles()->absolutePath(savegamePath));
 
 		GCM->tempFiles()->deleteFile(savegameTempPath);
+#ifdef __EMSCRIPTEN__
+		// The save is only in MEMFS until the page flushes it to IndexedDB (and the player's folder or
+		// Cloud Locker). Flush now, not on the next 15s tick - closing the tab right after saving lost it.
+		EM_ASM({ if (window.__ja2Sync) window.__ja2Sync(); });
+#endif
 	}
 	catch (std::runtime_error const& e)
 	{

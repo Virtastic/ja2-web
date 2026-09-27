@@ -45,8 +45,8 @@ A sweep for more bugs of the same kinds as #5, #6 and #8.
     and no longer hangs a client on an unsatisfiable range request.
   - `docker run` of the image without a Cloud Locker backend answers `/api` in 3 s
     instead of 30.
-  - SELF_HOSTING.md examples set correct cache headers and note that the Cloud Locker
-    needs the domain root.
+  - SELF_HOSTING.md examples set correct cache headers, note that the Cloud Locker
+    needs the domain root, and how to stop Cloudflare caching `.js`/`.data` 404s.
 - A broken nginx config now fails the image build instead of the deploy.
 
 ## [1.0.3] - 2026-09-27

@@ -96,7 +96,10 @@ jobs:
             --data '{"files":[
               "https://ja2.virtastic.app/",
               "https://ja2.virtastic.app/index.html",
-              "https://ja2.virtastic.app/launcher.html"
+              "https://ja2.virtastic.app/launcher.html",
+              "https://ja2.virtastic.app/data-manifests.json",
+              "https://ja2.virtastic.app/ja2-gamedata.js",
+              "https://ja2.virtastic.app/ja2-gamedata.data"
             ]}')
           code=$(printf '%s' "$resp" | tail -n1)
           body=$(printf '%s' "$resp" | sed '$d')

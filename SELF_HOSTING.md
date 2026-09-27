@@ -129,6 +129,11 @@ Serve the game from the **domain root** (`example.com/`, not `example.com/ja2/`)
 Cloud Locker API and its sign-in redirects use absolute `/api/...` and `/index.html`
 paths. The static game itself works under a sub-path.
 
+Behind **Cloudflare**, set *Caching → Browser Cache TTL* to **Respect Existing Headers**.
+Otherwise Cloudflare rewrites `no-cache` on `.js`/`.data` 404s to a 4-hour browser cache,
+so after you add `ja2-gamedata.*` players who already visited keep bouncing to the
+launcher until it expires.
+
 ## Cloud Locker (optional): sign-in + cloud saves & data
 
 The launcher's **Cloud Locker** tile lets players sign in (Discord / Google / Microsoft),

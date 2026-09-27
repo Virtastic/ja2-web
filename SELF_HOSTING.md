@@ -16,6 +16,9 @@ python3 server.py           # http://localhost:8795 (override with PORT=…)
 
 # B) Docker (bundled Dockerfile + compose):
 docker compose up           # http://localhost:8080
+
+# C) No download at all - the published image:
+docker run -p 8080:80 ghcr.io/virtastic/ja2-web:latest
 ```
 
 Open the URL in **desktop Chrome/Chromium**. The launcher (`launcher.html`) lets

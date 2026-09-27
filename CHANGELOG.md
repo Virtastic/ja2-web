@@ -6,7 +6,22 @@ port changes below.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-09-27
+
+### Added
+- Docker image on GHCR: `docker run -p 8080:80 ghcr.io/virtastic/ja2-web:latest`.
+- Every tagged release now ships the prebuilt self-host bundle (`ja2-web-<tag>.zip`).
+
 ### Fixed
+- Self-hosted game data: the "Play now - hosted here" card no longer bounces back to the
+  launcher (`server.py` rewrote `/index.html` to the launcher), and the hosted
+  `ja2-gamedata.data` is fetched from the site root instead of the versioned engine dir
+  (#8).
+- The shop screen fits the window: it is drawn across the whole framebuffer like the
+  battle screen, and is now presented the same way instead of zoomed as a 640x480
+  screen (#6). The map editor gets the same treatment.
+- Self-host bundles now include the engine fix for the false "running low on disk space
+  - 0.00MB free" warning at the end of a turn (#5); 1.0.1 fixed it only on the site.
 - Cloud Locker uploads of files over 100 MB no longer fail behind Cloudflare. Cloudflare
   caps proxied request bodies at ~100 MB, so same-origin uploads (local-storage mode) now
   slice large files into 64 MB chunks the server reassembles; the assembled file only

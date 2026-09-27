@@ -264,7 +264,7 @@ function save(){ return validateRes() ? writeJa2Json(collectCfg()) : Promise.rej
 
 $('saveBtn').onclick = function(){ save().then(() => flash('saved')); };
 $('reloadBtn').onclick = loadUI;
-$('playBtn').onclick = function(){ save().then(() => location.href = 'index.html'); };
+$('playBtn').onclick = function(){ save().then(() => location.href = './'); };  // the chooser
 $('editorBtn').onclick = function(){ save().then(() => location.href = 'index.html?editor'); };
 
 function flash(t){

@@ -296,8 +296,11 @@ function setLoading(t){
 // emscripten mouse handler maps  mx = targetX * window->w / cssW ; with the
 // UI-zoom box below a click lands on the exact framebuffer pixel the game expects,
 // so input is accurate in both modes with no engine change.
-var GAME_SCREEN = 5, FADE_SCREEN = 13, MSG_BOX_SCREEN = 14;  // ScreenIDs.h
-window.__ja2Screen = (typeof window.__ja2Screen === 'number') ? window.__ja2Screen : 0;
+var EDIT_SCREEN = 0, GAME_SCREEN = 5, FADE_SCREEN = 13, MSG_BOX_SCREEN = 14, SHOPKEEPER_SCREEN = 19;  // ScreenIDs.h
+// Screens drawn across the WHOLE framebuffer (not centered 640x480 art): tactical, the shopkeeper
+// (panel at 0,0 over the tactical view + the full-width HUD bar - issue #6) and the map editor.
+function isFullFrame(screen){ return screen === GAME_SCREEN || screen === SHOPKEEPER_SCREEN || screen === EDIT_SCREEN; }
+window.__ja2Screen = (typeof window.__ja2Screen === 'number') ? window.__ja2Screen : -1;
 var _fitBusy = false;
 function layoutCanvas(){
   var c = document.getElementById('canvas');
@@ -313,8 +316,8 @@ function layoutCanvas(){
   var vw = window.innerWidth, vh = window.innerHeight;
   if (!vw || !vh) return;                           // 0x0 (headless) → skip
   var left, top, cssW, cssH;
-  if (window.__ja2Screen === GAME_SCREEN){
-    // Battle: present whole framebuffer, fit-to-window (letter/pillarbox).
+  if (isFullFrame(window.__ja2Screen)){
+    // Battle/shop: present whole framebuffer, fit-to-window (letter/pillarbox).
     var s = Math.min(vw / fbW, vh / fbH);
     cssW = fbW * s; cssH = fbH * s;
     left = (vw - cssW) / 2; top = (vh - cssH) / 2;
@@ -349,10 +352,10 @@ setInterval(layoutCanvas, 500);
 // the battle screen doesn't suddenly zoom the whole view.
 window.__ja2SetScreen = function(screen){
   if (screen === FADE_SCREEN || screen === MSG_BOX_SCREEN) return;  // keep mode
-  var wasBattle = window.__ja2Screen === GAME_SCREEN;
-  var isBattle  = screen === GAME_SCREEN;
+  var wasFull = isFullFrame(window.__ja2Screen);
+  var isFull  = isFullFrame(screen);
   window.__ja2Screen = screen;
-  if (isBattle !== wasBattle) layoutCanvas();  // only re-layout on mode change
+  if (isFull !== wasFull) layoutCanvas();  // only re-layout on mode change
 };
 
 // Starting internal resolution, written into ja2.json's `res` at boot (JA2 can't
@@ -1037,8 +1040,10 @@ async function mirrorSavesToCloud(){
 var __ENGINE_VER = "__ENGINE_VERSION__";
 var __ENGINE_DIR = (__ENGINE_VER.charAt(0) === "_") ? "" : ("e/" + __ENGINE_VER + "/");
 var Module = {
-  // ja2.wasm, ja2.data AND the pthread-worker ja2.js all resolve through locateFile → versioned dir.
-  locateFile: function(path){ return __ENGINE_DIR + path; },
+  // ja2.wasm, ja2.data AND the pthread-worker ja2.js resolve through locateFile → versioned dir.
+  // Only the engine's own files: the hosted ja2-gamedata.data (file_packager also calls locateFile)
+  // lives at the site root, and prefixing it 404s → stuck on "Loading game data…".
+  locateFile: function(path){ return /^ja2\.(js|wasm|data)$/.test(path) ? __ENGINE_DIR + path : path; },
   canvas: document.getElementById('canvas'),
   arguments: /[?&]editor\b/.test(location.search) ? ['-editor'] : [],
   print: function(t){ console.log(t); },

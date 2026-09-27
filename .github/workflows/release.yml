@@ -1,0 +1,67 @@
+name: release
+
+# Tag push (vX.Y.Z) → build the engine image on the self-hosted runner (the only place with the
+# ja2-builder toolchain), push it to GHCR, and attach the self-host bundle + source to a GitHub release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag: { description: 'Existing tag to (re)release, e.g. v1.0.2', required: true }
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-ja2
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: [self-hosted, ovh, virtastic]
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      IMAGE: ghcr.io/virtastic/ja2-web
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: '${{ inputs.tag || github.ref }}' }
+
+      - name: Ensure builder image
+        run: |
+          docker image inspect ja2-builder:1 >/dev/null 2>&1 \
+            || DOCKER_BUILDKIT=1 docker build --network=host -t ja2-builder:1 -f Dockerfile.builder .
+
+      - name: Build image
+        run: DOCKER_BUILDKIT=1 docker build --network=host -t "$IMAGE:$TAG" -t "$IMAGE:latest" -f Dockerfile .
+
+      - name: Push to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker push "$IMAGE:$TAG"
+          docker push "$IMAGE:latest"
+
+      # Self-host bundle = the image's web root + server.py + a standalone Dockerfile/compose/nginx.
+      - name: Bundle
+        run: |
+          rm -rf dist && mkdir -p dist
+          ctr=$(docker create "$IMAGE:$TAG")
+          docker cp "$ctr:/usr/share/nginx/html" "dist/ja2-web-$TAG"
+          docker rm "$ctr"
+          cp play/server.py infra/nginx.conf deploy/standalone/Dockerfile \
+             deploy/standalone/docker-compose.yml deploy/standalone/README.txt "dist/ja2-web-$TAG/"
+          (cd dist && python3 -m zipfile -c "ja2-web-$TAG.zip" "ja2-web-$TAG")
+          git archive --format=tar.gz --prefix="ja2-web-$TAG/" -o "dist/ja2-web-src-$TAG.tar.gz" HEAD
+          # Notes = this version's CHANGELOG section.
+          awk -v h="## [${TAG#v}]" 'index($0, h) == 1 {on=1; next} index($0, "## [") == 1 {on=0} on' CHANGELOG.md > dist/notes.md
+          printf '\n---\nDocker: `docker run -p 8080:80 %s:%s`\n\nJagged Alliance 2 game data is **not** included - you supply your own legally-obtained copy.\n' "$IMAGE" "$TAG" >> dist/notes.md
+          ls -l dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: ja2-web ${{ env.TAG }}
+          body_path: dist/notes.md
+          files: |
+            dist/ja2-web-${{ env.TAG }}.zip
+            dist/ja2-web-src-${{ env.TAG }}.tar.gz

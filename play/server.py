@@ -77,11 +77,10 @@ class H(http.server.SimpleHTTPRequestHandler):
     def send_head(self):
         if CLOUD_API and self.path.startswith('/api/'):
             return self._proxy_api()
-        # Launcher gate: only the bare root serves the chooser. The match is on the FULL path
-        # incl. query, so anything with a query string - the launcher's own index.html?nomw /
-        # index.html?src=local links, plus dev URLs like ?debug - passes straight through to
-        # the game. Explicit /launcher.html and assets are likewise untouched.
-        if LAUNCHER and self.path in ('/', '/index.html'):
+        # Launcher gate: only the bare root serves the chooser (same as infra/nginx.conf).
+        # /index.html itself must reach the game: the launcher's hosted-data "Play now" card
+        # links to it with no query, and gating it bounced players straight back (issue #8).
+        if LAUNCHER and self.path == '/':
             self.path = '/launcher.html'
         # HTTP Range support (python's SimpleHTTPRequestHandler has none) - required for the
         # ?stream lazy-BSA mode (emscripten FS.createLazyFile reads the archives in chunks).

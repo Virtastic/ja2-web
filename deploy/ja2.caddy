@@ -13,6 +13,13 @@
 # carries no COOP/COEP (JSON/redirects, not embedded) - ja2-cloud sets none and neither does this.
 ja2.virtastic.app {
 	tls /certs/virtastic.crt /certs/virtastic.key
+	# virtastic.app runs ja2 inside its Virtastic Navigator window (an iframe), so this vhost lets
+	# that one site frame it: sec_headers' X-Frame-Options SAMEORIGIN goes, and frame-ancestors
+	# allows virtastic.app (and www) only, so no other site can frame the sign-in. The delete sits
+	# BEFORE the import: deferred header ops run innermost first, so the outermost (this) runs last
+	# and wins - the same ordering freecad.caddy needed (measured there).
+	header -X-Frame-Options
+	header Content-Security-Policy "frame-ancestors 'self' https://virtastic.app https://www.virtastic.app"
 	import sec_headers
 	handle /api/* {
 		reverse_proxy ja2-cloud:8080
